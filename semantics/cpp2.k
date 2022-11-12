@@ -1,9 +1,94 @@
 module PRESSY-SYNTAX
   imports DOMAINS-SYNTAX
 
-  syntax DExp  ::= Int | String | Id
+  syntax Literal  ::= Int | String
 
-  syntax Identifier
+  syntax Identifier ::= Id
+
+  syntax PrefixOperator ::= "!"
+                          | "-"
+                          | "+"
+
+  syntax PostfixOperator ::= "++"
+                           | "--"
+                           | "*"
+                           | "&"
+                           | "~"
+                           | "$"
+
+  syntax AssignmentOperator ::= "="
+                              | "*="
+                              | "/="
+                              | "%="
+                              | "+="
+                              | "-="
+                              | ">>="
+                              | "<<="
+
+  syntax PrimaryExpression ::= Literal
+                             | "(" Expressions ")"
+                             | IdExpression
+                             | UnnamedDeclaration
+                             | InspectExpression
+
+  syntax PostfixExpression ::= PrimaryExpression
+                             | PostfixExpression PostfixOperator // TODO: without whitespace
+                             | PostfixExpression "[" Expressions "]"
+                             | PostfixExpression "(" Expressions ")"
+                             | PostfixExpression "(" ")"
+                             | PostfixExpression "." IdExpression
+
+
+  syntax PrefixExpression ::= PostfixExpression
+                            | PrefixOperator PrefixExpression
+
+  syntax IsAsExpression ::= PrefixExpression
+//                          | IsAsExpression IsExpressionConstraint
+//                          | IsAsExpression AsTypeCast
+                          
+
+  syntax MultiplicativeExpression ::= IsAsExpression
+                                    | MultiplicativeExpression "*" IsAsExpression
+                                    | MultiplicativeExpression "/" IsAsExpression
+                                    | MultiplicativeExpression "%" IsAsExpression
+ 
+  syntax AdditiveExpression ::= MultiplicativeExpression
+                              | AdditiveExpression "+" MultiplicativeExpression 
+                              | AdditiveExpression "-" MultiplicativeExpression 
+
+
+  syntax ShiftExpression ::= AdditiveExpression
+                           | ShiftExpression "<<" AdditiveExpression
+                           | ShiftExpression ">>" AdditiveExpression
+
+  syntax CompareExpression ::= ShiftExpression
+                             | CompareExpression "<=>" ShiftExpression
+
+  syntax RelationalExpression ::= CompareExpression
+                                | RelationalExpression "<"  CompareExpression
+                                | RelationalExpression ">"  CompareExpression
+                                | RelationalExpression "<=" CompareExpression
+                                | RelationalExpression ">=" CompareExpression
+
+  syntax EqualityExpression ::= RelationalExpression
+                              | EqualityExpression "==" RelationalExpression
+                              | EqualityExpression "!=" RelationalExpression
+
+  syntax BitAndExpression ::= EqualityExpression
+                            | BitAndExpression "&" EqualityExpression
+
+  syntax BitXorExpression ::= BitAndExpression
+                            | BitXorExpression "^" BitAndExpression
+
+  syntax BitOrExpression ::= BitXorExpression
+                           | BitOrExpression "|" BitXorExpression
+
+  syntax LogicalAndExpression ::= BitOrExpression
+                                | LogicalAndExpression "&&" BitOrExpression
+
+
+  syntax LogicalOrExpression ::= LogicalAndExpression
+                               | LogicalOrExpression "||" LogicalAndExpression
 
   syntax AssignmentExpression ::= LogicalOrExpression
                                 | AssignmentExpression AssignmentOperator AssignmentExpression
