@@ -1,40 +1,60 @@
 module PRESSY-SYNTAX
-    imports DOMAINS-SYNTAX
+  imports DOMAINS-SYNTAX
 
-    // We have two kinds of expressions 'Data' expressions (DExp)
-    // and 'boolean' expressions (Bexp)
-
-    syntax DExp  ::= Int | String | Id
-                 | "-" DExp                   [strict]
-                 | "(" DExp ")"               [bracket]
-                 > DExp "/" DExp              [left, seqstrict]
-                 > DExp "+" DExp              [left, seqstrict]
-                 > "spawn" Block
-  syntax BExp  ::= Bool
-                 | DExp "==" DExp             [seqstrict]
-                 | DExp "<" DExp             [seqstrict]
-                 | DExp "<=" DExp             [seqstrict]
-                 | DExp ">" DExp             [seqstrict]
-                 | DExp ">=" DExp             [seqstrict]
-                 | "!" BExp                   [seqstrict]
-                 | "(" BExp ")"               [bracket]
-                 > BExp "&&" BExp             [left, strict(1)]
-  syntax Block ::= "{" Stmts "}"
-  syntax Stmt  ::= Block
-                 | DExp ";"                   [strict]
-                 | "if" "(" BExp ")"
-                   Block "else" Block         [strict(1)]
-                 | "while" "(" BExp ")" Block
-                 | "int" Ids ";"
-                 | "halt" ";"
-                 > "join" DExp ";"            [strict]
-
-  syntax Ids   ::= List{Id,","}
-  syntax Stmts ::= List{Stmt,""}
-  syntax AExps ::= Ids
-
+  syntax DExp  ::= Int | String | Id
 
   syntax Identifier
+
+  syntax AssignmentExpression ::= LogicalOrExpression
+                                | AssignmentExpression AssignmentOperator AssignmentExpression
+
+  syntax Expression ::= AssignmentExpression
+
+  syntax ExpressionList ::= List{Expression,","}
+ 
+  syntax TemplateArgument ::= Expression | IdExpression
+
+  syntax TemplateArgumentList ::= List{TemplateArgument,","}
+
+  syntax TemplateId ::= Identifier "<" TemplateArgumentList ">"
+                      | Identifier "<"                      ">"
+
+  syntax UnqualifiedId ::= "const" Identifier
+                         |         Identifier
+                         | "const" TemplateId
+                         |         TemplateId
+
+  syntax QuanlifiedId ::= NestedNameSpecifier UnqualifiedId
+                        | MemberNameSpecifier UnqualifiedId
+
+  syntax MemberNameSpecifier ::= UnqualifiedId "."
+
+  syntax NestedNameSpecifier ::= "::"
+                               | UnqualifiedId "::"
+
+  syntax IdExpression ::= UnqualifiedId | QualifiedId
+
+  syntax ExpressionStatement ::= Expression ";"
+                               | Expression
+
+  syntax SelectionStatement ::= "if" "constexpr" Expression CompoundStatement
+                              | "if"             Expression CompoundStatement
+                              | "if" "constexpr" Expression CompoundStatement "else" CoompoundStatement
+                              | "if"             Expression CompoundStatement "else" CoompoundStatement
+                              
+
+  syntax ReturnStatement ::= "return" Expression ";"
+                           | "return" ";"
+ 
+  syntax IterationStatement ::= "while" LogicalOrExpression NextClause CompoundStatement
+                              | "while" LogicalOrExpression            CompoundStatement
+                              | "do" CompoundStatement "while" LogicalOrExpression NextClause ";"
+                              | "do" CompoundStatement "while" LogicalOrExpression            ";"
+                              | "for" Expression NextClause "do" UnnamedDeclaration
+                              | "for" Expression            "do" UnnamedDeclaration
+
+
+  syntax NextClause ::= "next" AssignmentExpression
 
   syntax IsTypeConstraint ::= "is" IdExpression  
 
