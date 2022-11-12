@@ -1,5 +1,7 @@
-module PRESSY-SYNTAX
+module CPP2-SYNTAX
   imports DOMAINS-SYNTAX
+
+  // based on https://github.com/hsutter/cppfront/blob/main/source/parse.h
 
   syntax Literal  ::= Int | String
 
@@ -95,7 +97,7 @@ module PRESSY-SYNTAX
 
   syntax Expression ::= AssignmentExpression
 
-  syntax ExpressionList ::= List{Expression,","}
+  syntax Expressions ::= List{Expression,","}
  
   syntax TemplateArgument ::= Expression | IdExpression
 
@@ -109,7 +111,7 @@ module PRESSY-SYNTAX
                          | "const" TemplateId
                          |         TemplateId
 
-  syntax QuanlifiedId ::= NestedNameSpecifier UnqualifiedId
+  syntax QualifiedId ::= NestedNameSpecifier UnqualifiedId
                         | MemberNameSpecifier UnqualifiedId
 
   syntax MemberNameSpecifier ::= UnqualifiedId "."
@@ -124,8 +126,8 @@ module PRESSY-SYNTAX
 
   syntax SelectionStatement ::= "if" "constexpr" Expression CompoundStatement
                               | "if"             Expression CompoundStatement
-                              | "if" "constexpr" Expression CompoundStatement "else" CoompoundStatement
-                              | "if"             Expression CompoundStatement "else" CoompoundStatement
+                              | "if" "constexpr" Expression CompoundStatement "else" CompoundStatement
+                              | "if"             Expression CompoundStatement "else" CompoundStatement
                               
 
   syntax ReturnStatement ::= "return" Expression ";"
@@ -165,15 +167,17 @@ module PRESSY-SYNTAX
 
 
 
-  syntax Statement ::= "let" ParameterList Statement
+  syntax Statement ::= "let" ParameterDeclarationList Statement
                      | SelectionStatement
                      | InspectExpression
                      | ReturnStatement
                      | IterationStatement
                      | CompoundStatement
-                     | DeclarationStatement
+                     | Declaration // TODO check whether this is correct; the spec says "declaration-statement"
                      | ExpressionStatement
                      | Contract
+
+  syntax Statements ::= List{Statement,""}
 
   syntax CompoundStatement ::= "{" Statements "}"
                              | "{" "}"
@@ -189,10 +193,12 @@ module PRESSY-SYNTAX
   syntax ParameterDeclarationList ::= "(" ")"
                                     | "(" ParameterDeclarations ")"
 
-  syntax Contract ::= "[" "[" ContractKind IdExpression LogicalExpression "]" "]"
-                    | "[" "[" ContractKind IdExpression LogicalExpression "," String "]" "]"
-                    | "[" "[" ContractKind              LogicalExpression "]" "]"
-                    | "[" "[" ContractKind              LogicalExpression "," String "]" "]"
+  syntax ContractKind ::= "pre" | "post" | "assert"
+
+  syntax Contract ::= "[" "[" ContractKind IdExpression LogicalOrExpression "]" "]"
+                    | "[" "[" ContractKind IdExpression LogicalOrExpression "," String "]" "]"
+                    | "[" "[" ContractKind              LogicalOrExpression "]" "]"
+                    | "[" "[" ContractKind              LogicalOrExpression "," String "]" "]"
 
   syntax ReturnList ::= IdExpression ParameterDeclarationList
 
@@ -222,14 +228,16 @@ module PRESSY-SYNTAX
 
 endmodule
 
-module PRESSY
-    imports PRESSY-SYNTAX 
+module CPP2
+    imports CPP2-SYNTAX 
     imports DOMAINS
+
+   syntax KItem ::= process(TranslationUnit)
 
    configuration <T>
                   <threads>
                     <thread type="Set" multiplicity="*">
-                      <k> $PGM:Stmts </k>
+                      <k> process($PGM) </k>
                       <env> .Map </env>
                       <id> 0 </id>
                     </thread>
