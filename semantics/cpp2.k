@@ -227,7 +227,7 @@ module CPP2
 
   syntax Phase ::= TranslationPhase() | ExecutionPhase()
   syntax TranslateResult
-  syntax ExecResult
+  syntax ExecResult ::= Int | String | Bool
 
   context alias [c]: <k> HERE:K ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
   context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
