@@ -180,7 +180,6 @@ module CPP2-SYNTAX
   syntax Statements ::= List{Statement,""}
 
   syntax CompoundStatement ::= "{" Statements "}"
-                             | "{" "}"
   
   syntax ThisSpecifier ::= "implicit" | "virtual" | "override" | "final"
 
@@ -217,7 +216,7 @@ module CPP2-SYNTAX
                               | ":" IdExpression
 
   syntax Declaration ::= Identifier UnnamedDeclaration
-  syntax Declarations ::= List{Declaration,""} [seqstrict(c)]
+  syntax Declarations ::= List{Declaration,""}
   syntax TranslationUnit ::= Declarations 
 
 endmodule
@@ -234,14 +233,19 @@ module CPP2
                   <phase> TranslationPhase() </phase>
                   <k> $PGM:TranslationUnit </k>
                   <declarations> .Map </declarations>
+                  <stack> .List </stack>
                 </T>
 
 
-  syntax KItem ::= executeMain()
-  
-  // rule <k> D:Declaration Ds:Declarations => Ds </k>
+  rule <k> D:Declaration Ds:Declarations => D ~> Ds </k>
 
-  rule <k> .Declarations => executeMain() </k>
+  rule <k> (X:Identifier UD:UnnamedDeclaration):Declaration => .K ...</k>
+       <declarations>... .Map => (X |-> UD) ...</declarations>
+
+
+  syntax KItem ::= callMain()
+
+  rule <k> .Declarations => callMain() </k>
        <phase> TranslationPhase() => ExecutionPhase() </phase>
 
   context alias [c]: <k> HERE:K ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
@@ -249,5 +253,21 @@ module CPP2
 
 
   syntax KResult ::= Bool | Int
+
+  // Execution phase
+  
+  rule callMain() => callFunction(main)
+  
+  syntax Id ::= "main" [token]
+  syntax KItem ::= callFunction(Identifier)
+
+  syntax StackFrame ::= stackFrame(cont: K)
+
+  rule [call-function]:
+       <k> (callFunction(F:Identifier) ~> Rest:K) => (S ~> implicitReturn()) </k>
+       <declarations>... F |-> ( : _T:FunctionType = S:Statement):UnnamedDeclaration ...</declarations>
+       <stack>... (.List => ListItem(stackFrame(Rest))) </stack>
+
+  syntax KItem ::= implicitReturn()
 
 endmodule
