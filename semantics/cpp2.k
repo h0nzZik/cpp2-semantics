@@ -3,7 +3,7 @@ module CPP2-SYNTAX
 
   // based on https://github.com/hsutter/cppfront/blob/main/source/parse.h
 
-  syntax Literal  ::= Int | String
+  syntax Literal  ::= Int | String // What about bool?
 
   syntax Identifier ::= Id
 
@@ -177,7 +177,7 @@ module CPP2-SYNTAX
                      | ExpressionStatement
                      | Contract
 
-  syntax Statements ::= List{Statement,""}
+  syntax Statements ::= List{Statement,""} [seqstrict(c)]
 
   syntax CompoundStatement ::= "{" Statements "}"
   
@@ -229,12 +229,55 @@ module CPP2
   syntax TranslateResult
   syntax ExecResult
 
+  context alias [c]: <k> HERE:K ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
+  context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
+
+
+  // Notation : ${SortName}C is the sort of basic constructors representing values of the sort ${SortName}.
+  // It should always be true that `ExecResult ::= ${SortName}C`
+  // Similarly, ${SortName}F is the sort of function-like constructors representing operations of the sort ${SortName}.
+  // From K's perspective, both are constructors and not functions.
+
+  syntax ObjectIDC ::= objectID(Int)
+  syntax ObjectIDF ::= lookupObjectID(Identifier)
+  syntax ObjectID ::= ObjectIDC | ObjectIDF
+  syntax ExecResult ::= ObjectIDC
+
+  syntax ValueC ::= boolValue(Bool) | intValue(Int) | voidValue()
+  syntax ValueF ::= readValue(ObjectID)
+                  | Expression
+  syntax Value ::= ValueC | ValueF
+  syntax ExecResult ::= ValueC
+
   configuration <T>
                   <phase> TranslationPhase() </phase>
                   <k> $PGM:TranslationUnit </k>
                   <declarations> .Map </declarations>
-                  <stack> .List </stack>
+                  <state>
+                    <stack> .List </stack>
+                    <local>
+                      <blocks> .List </blocks>
+                      <returnVariables> .Map </returnVariables> // Identifier |-> ObjectIDC
+                    </local>
+                    <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
+                  </state>
+                  <exit-code exit=""> 139 </exit-code>
                 </T>
+
+  // Memory
+  //------------------------------------------------------
+  syntax KItem ::= writeValue(ObjectID, Value) [seqstrict(c)]
+
+  rule <k> writeValue(objectID(I), V) => .K ...</k>
+       <memory> M => M [ I <- V ] </memory>
+
+  rule <k> readValue(objectID(I)) => V ...</k>
+       <memory>... I |-> V ...</memory>
+
+  // Names
+  //-----------------------------------------------------
+  rule <k> lookupObjectID(X) => ID ...</k>
+       <returnVariables>... (X |-> ID:ObjectIDC) ...</returnVariables>
 
 
   rule <k> D:Declaration Ds:Declarations => D ~> Ds </k>
@@ -242,32 +285,62 @@ module CPP2
   rule <k> (X:Identifier UD:UnnamedDeclaration):Declaration => .K ...</k>
        <declarations>... .Map => (X |-> UD) ...</declarations>
 
-
   syntax KItem ::= callMain()
 
   rule <k> .Declarations => callMain() </k>
        <phase> TranslationPhase() => ExecutionPhase() </phase>
 
-  context alias [c]: <k> HERE:K ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
-  context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
 
-
-  syntax KResult ::= Bool | Int
+  syntax KResult ::= ExecResult
 
   // Execution phase
   
-  rule callMain() => callFunction(main)
+  rule callMain() => callFunction(main) ~> implicitReturn(0)
   
   syntax Id ::= "main" [token]
   syntax KItem ::= callFunction(Identifier)
 
-  syntax StackFrame ::= stackFrame(cont: K)
+  syntax StackFrame ::= stackFrame(cont: K, blocks: List, retvars: Map)
+  syntax BlockFrame ::= blockFrame()
 
   rule [call-function]:
-       <k> (callFunction(F:Identifier) ~> Rest:K) => (S ~> implicitReturn()) </k>
+       <k> (callFunction(F:Identifier) ~> Rest:K) => S </k>
        <declarations>... F |-> ( : _T:FunctionType = S:Statement):UnnamedDeclaration ...</declarations>
-       <stack>... (.List => ListItem(stackFrame(Rest))) </stack>
+       <stack>... (.List => ListItem(stackFrame(Rest, Blocks, RVs))) </stack>
+       <blocks> Blocks:List => .List </blocks>
+       <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(!_I:Int)) </returnVariables>
 
-  syntax KItem ::= implicitReturn()
+
+  syntax KItem ::= implicitReturn(Expression) [seqstrict(c)]
+
+  rule <k> ({ Stmts:Statements }):CompoundStatement => enterBlock() ~> Stmts ~> leaveBlock() ...</k> 
+
+  syntax KItem ::= enterBlock() | leaveBlock()
+
+  rule <k> enterBlock() => .K ...</k>
+       <blocks>... (.List => ListItem(blockFrame())) </blocks>
+       
+  rule <k> leaveBlock() => .K ...</k>
+       <blocks>... (ListItem(blockFrame()) => .List) </blocks>
+
+  syntax Identifier ::= unnamedReturnVariable()
+
+  rule [return-exp]:
+    return E:Expression ; => returnValue(evaluateExpression(E))
+  
+  syntax ValueF ::= evaluateExpression(Expression) [seqstrict(c)]
+
+  rule evaluateExpression(V:Int) => intValue(V)
+  //rule evaluateExpression(V:Bool) => boolValue(V)
+
+  syntax KItem ::= returnValue(Value) [seqstrict(c)]
+
+  rule [return-value]:
+    returnValue(V:ValueC)
+    => writeValue(lookupObjectID(unnamedReturnVariable()), V)
+    ~> return ;
+
+  // TODO
+  //rule <k> return ; =>  ...</k>
 
 endmodule
