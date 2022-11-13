@@ -124,8 +124,7 @@ module CPP2-SYNTAX
   syntax IdExpression ::= QualifiedId
                         > UnqualifiedId
 
-  syntax ExpressionStatement ::= Expression ";"
-                               > Expression
+  syntax ExpressionStatement ::= Expression
 
   syntax SelectionStatement ::= "if" "constexpr" Expression CompoundStatement
                               | "if"             Expression CompoundStatement
@@ -180,9 +179,10 @@ module CPP2-SYNTAX
                      > ExpressionStatement
                      > Contract
 
-  syntax Statements ::= List{Statement,""} [seqstrict(c)]
+  syntax Statements ::= List{Statement,";"} [seqstrict(c)]
 
-  syntax CompoundStatement ::= "{" Statements "}"
+  syntax CompoundStatement ::= "{" Statements ";" "}"
+                             | "{" "}"
   
   syntax ThisSpecifier ::= "implicit" | "virtual" | "override" | "final"
 
@@ -330,7 +330,8 @@ module CPP2
        <blocks> Blocks:List => .List </blocks>
        <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(!I:Int)) </returnVariables>
 
-  rule <k> ({ Stmts:Statements }):CompoundStatement => enterBlock() ~> Stmts ~> leaveBlock() ...</k> 
+  rule [compound-nonempty]: <k> ({ Stmts:Statements ; }):CompoundStatement => enterBlock() ~> Stmts ~> leaveBlock() ...</k> 
+  rule [compound-empty]: <k> ({ }):CompoundStatement => enterBlock() ~> leaveBlock() ...</k> 
 
   syntax KItem ::= enterBlock() | leaveBlock()
 
