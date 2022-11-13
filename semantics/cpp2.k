@@ -304,7 +304,14 @@ module CPP2
 
   // Execution phase
   
-  rule callMain() => callFunction(main) ~> implicitReturn(0)
+  rule callMain() => callFunction(main) ~> exitWithValue()
+
+  syntax KItem ::= exitWithValue()
+  rule <k> (intValue(X) ~> exitWithValue()) ~> _ => .K </k>
+       <exit-code> _ => X </exit-code>
+  
+  rule <k> (voidValue() ~> exitWithValue()) ~> _ => .K </k>
+       <exit-code> _ => 0 </exit-code>
   
   syntax Id ::= "main" [token]
   syntax KItem ::= callFunction(Identifier)
@@ -313,14 +320,11 @@ module CPP2
   syntax BlockFrame ::= blockFrame()
 
   rule [call-function]:
-       <k> (callFunction(F:Identifier) ~> Rest:K) => S </k>
+       <k> (callFunction(F:Identifier) ~> Rest:K) => writeValue(objectID(!I:Int), voidValue()) ~> S </k>
        <declarations>... F |-> ( : _T:FunctionType = S:Statement):UnnamedDeclaration ...</declarations>
        <stack>... (.List => ListItem(stackFrame(Rest, Blocks, RVs))) </stack>
        <blocks> Blocks:List => .List </blocks>
-       <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(!_I:Int)) </returnVariables>
-
-
-  syntax KItem ::= implicitReturn(Expression) [seqstrict(c)]
+       <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(!I:Int)) </returnVariables>
 
   rule <k> ({ Stmts:Statements }):CompoundStatement => enterBlock() ~> Stmts ~> leaveBlock() ...</k> 
 
@@ -349,8 +353,15 @@ module CPP2
     => writeValue(lookupObjectID(unnamedReturnVariable()), V)
     ~> return ;
 
-  // TODO
-  //rule <k> return ; =>  ...</k>
+  rule [return-from-block]:
+       <k> (.K => leaveBlock()) ~> return ; ...</k>
+       <blocks>... ListItem(_) </blocks>
+
+  rule [return-no-block]:
+       <k> return ; => readValue(objectID(I)) ~> Rest...</k>
+       <blocks> .List  => Blocks</blocks>
+       <stack>... (ListItem(stackFrame(Rest, Blocks, RVs)) => .List) </stack>
+       <returnVariables> (unnamedReturnVariable() |-> objectID(I:Int)) => RVs </returnVariables>
 
   syntax KItem ::= ite(BoolValue, KItem, KItem) [strict(1)]
 
