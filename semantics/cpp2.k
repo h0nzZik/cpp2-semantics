@@ -2,6 +2,7 @@ module CPP2-SYNTAX
   imports DOMAINS-SYNTAX
 
   // based on https://github.com/hsutter/cppfront/blob/main/source/parse.h
+  // see also https://github.com/hsutter/cppfront/issues/71
 
   syntax Literal  ::= Int | String // What about bool?
 
@@ -27,22 +28,22 @@ module CPP2-SYNTAX
                               | ">>="
                               | "<<="
 
-  syntax PrimaryExpression ::= Literal
-                             | "(" Expressions ")"
-                             | IdExpression
-                             | UnnamedDeclaration
-                             | InspectExpression
+  syntax PrimaryExpression ::= InspectExpression
+                             > IdExpression
+                             > Literal
+                             > "(" Expressions ")" 
+                             > UnnamedDeclarationWithEquals
 
   syntax PostfixExpression ::= PrimaryExpression
-                             | PostfixExpression PostfixOperator // TODO: without whitespace
+                             > PostfixExpression PostfixOperator // TODO: without whitespace
                              | PostfixExpression "[" Expressions "]"
                              | PostfixExpression "(" Expressions ")"
-                             | PostfixExpression "(" ")"
+                             //| PostfixExpression "(" ")"
                              | PostfixExpression "." IdExpression
 
 
   syntax PrefixExpression ::= PostfixExpression
-                            | PrefixOperator PrefixExpression
+                            > PrefixOperator PrefixExpression
 
   syntax IsAsExpression ::= PrefixExpression
 //                          | IsAsExpression IsExpressionConstraint
@@ -50,50 +51,51 @@ module CPP2-SYNTAX
                           
 
   syntax MultiplicativeExpression ::= IsAsExpression
-                                    | MultiplicativeExpression "*" IsAsExpression
+                                    > MultiplicativeExpression "*" IsAsExpression
                                     | MultiplicativeExpression "/" IsAsExpression
                                     | MultiplicativeExpression "%" IsAsExpression
  
   syntax AdditiveExpression ::= MultiplicativeExpression
-                              | AdditiveExpression "+" MultiplicativeExpression 
+                              > AdditiveExpression "+" MultiplicativeExpression 
                               | AdditiveExpression "-" MultiplicativeExpression 
 
 
   syntax ShiftExpression ::= AdditiveExpression
-                           | ShiftExpression "<<" AdditiveExpression
+                           > ShiftExpression "<<" AdditiveExpression
                            | ShiftExpression ">>" AdditiveExpression
 
   syntax CompareExpression ::= ShiftExpression
-                             | CompareExpression "<=>" ShiftExpression
+                             > CompareExpression "<=>" ShiftExpression
 
   syntax RelationalExpression ::= CompareExpression
-                                | RelationalExpression "<"  CompareExpression
+                                > RelationalExpression "<"  CompareExpression
                                 | RelationalExpression ">"  CompareExpression
                                 | RelationalExpression "<=" CompareExpression
                                 | RelationalExpression ">=" CompareExpression
 
   syntax EqualityExpression ::= RelationalExpression
-                              | EqualityExpression "==" RelationalExpression
+                              > EqualityExpression "==" RelationalExpression
                               | EqualityExpression "!=" RelationalExpression
 
   syntax BitAndExpression ::= EqualityExpression
-                            | BitAndExpression "&" EqualityExpression
+                            > BitAndExpression "&" EqualityExpression
 
   syntax BitXorExpression ::= BitAndExpression
-                            | BitXorExpression "^" BitAndExpression
+                            > BitXorExpression "^" BitAndExpression
 
   syntax BitOrExpression ::= BitXorExpression
-                           | BitOrExpression "|" BitXorExpression
+                           > BitOrExpression "|" BitXorExpression
 
   syntax LogicalAndExpression ::= BitOrExpression
-                                | LogicalAndExpression "&&" BitOrExpression
+                                > LogicalAndExpression "&&" BitOrExpression
 
 
   syntax LogicalOrExpression ::= LogicalAndExpression
-                               | LogicalOrExpression "||" LogicalAndExpression
+                               > LogicalOrExpression "||" LogicalAndExpression
 
   syntax AssignmentExpression ::= LogicalOrExpression
-                                | AssignmentExpression AssignmentOperator AssignmentExpression
+  //                              | AssignmentExpression AssignmentOperator AssignmentExpression
+                                > AssignmentExpression AssignmentOperator LogicalOrExpression [expressionStatementTag]
 
   syntax Expression ::= AssignmentExpression
 
@@ -104,7 +106,7 @@ module CPP2-SYNTAX
   syntax TemplateArgumentList ::= List{TemplateArgument,","}
 
   syntax TemplateId ::= Identifier "<" TemplateArgumentList ">"
-                      | Identifier "<"                      ">"
+                      //| Identifier "<"                      ">"
 
   syntax UnqualifiedId ::= "const" Identifier
                          |         Identifier
@@ -119,10 +121,11 @@ module CPP2-SYNTAX
   syntax NestedNameSpecifier ::= "::"
                                | UnqualifiedId "::"
 
-  syntax IdExpression ::= UnqualifiedId | QualifiedId
+  syntax IdExpression ::= QualifiedId
+                        > UnqualifiedId
 
   syntax ExpressionStatement ::= Expression ";"
-                               | Expression
+                               > Expression
 
   syntax SelectionStatement ::= "if" "constexpr" Expression CompoundStatement
                               | "if"             Expression CompoundStatement
@@ -168,14 +171,14 @@ module CPP2-SYNTAX
 
 
   syntax Statement ::= "let" ParameterDeclarationList Statement
-                     | SelectionStatement
-                     | InspectExpression
-                     | ReturnStatement
-                     | IterationStatement
-                     | CompoundStatement
-                     | Declaration // TODO check whether this is correct; the spec says "declaration-statement"
-                     | ExpressionStatement
-                     | Contract
+                     > SelectionStatement
+                     > InspectExpression
+                     > ReturnStatement
+                     > IterationStatement
+                     > CompoundStatement
+                     > Declaration // TODO check whether this is correct; the spec says "declaration-statement"
+                     > ExpressionStatement
+                     > Contract
 
   syntax Statements ::= List{Statement,""} [seqstrict(c)]
 
@@ -209,11 +212,12 @@ module CPP2-SYNTAX
 
 
 
+  syntax UnnamedDeclaration ::= UnnamedDeclarationWithEquals
+                              > ":" IdExpression
 
-  syntax UnnamedDeclaration ::= ":" FunctionType "=" Statement
-                              | ":" IdExpression "=" Statement
-                              | ":"              "=" Statement
-                              | ":" IdExpression
+  syntax UnnamedDeclarationWithEquals ::= ":" FunctionType "=" Statement
+                                        | ":" IdExpression "=" Statement
+                                        | ":"              "=" Statement
 
   syntax Declaration ::= Identifier UnnamedDeclaration
   syntax Declarations ::= List{Declaration,""}

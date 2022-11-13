@@ -14,6 +14,9 @@ smoke-test: ${TIMESTAMP}
 nested-calls: ${TIMESTAMP}
 	krun --directory ${KOMPILED_DIR} tests/nested-calls.cpp2
 
+local-variables: ${TIMESTAMP}
+	krun --directory ${KOMPILED_DIR} tests/local-variables.cpp2
+
 properties: properties/spec.k ${TIMESTAMP}
 	kprove --directory ${KOMPILED_DIR} properties/spec.k
 
