@@ -243,7 +243,16 @@ module CPP2
   syntax ObjectID ::= ObjectIDC | ObjectIDF
   syntax ExecResult ::= ObjectIDC
 
-  syntax ValueC ::= boolValue(Bool) | intValue(Int) | voidValue()
+  // We use bool values in both translation and execution
+  // Therefore, we need KResult ::= BoolValueC
+  // and constructors of sort [BoolValueF] should use normal context
+  // (that is, they should *not* use the context alias [c] defined above).
+  syntax BoolValueC ::= boolValue(Bool)
+  syntax BoolValueF
+  syntax BoolValue ::= BoolValueC | BoolValueF
+  syntax KResult ::= BoolValueC
+
+  syntax ValueC ::= BoolValueC | intValue(Int) | voidValue()
   syntax ValueF ::= readValue(ObjectID)
                   | Expression
   syntax Value ::= ValueC | ValueF
@@ -342,5 +351,10 @@ module CPP2
 
   // TODO
   //rule <k> return ; =>  ...</k>
+
+  syntax KItem ::= ite(BoolValue, KItem, KItem) [strict(1)]
+
+  rule [ite-true]: ite(boolValue(true), X, _Y) => X
+  rule [ite-false]: ite(boolValue(false), _X, Y) => Y
 
 endmodule
