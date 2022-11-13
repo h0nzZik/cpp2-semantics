@@ -1,0 +1,7 @@
+inc : (in x : int) -> int = {
+  return x + 1;
+}
+
+main : () -> int = {
+    return inc (inc (inc (inc (inc (1))))); // = 6
+}
