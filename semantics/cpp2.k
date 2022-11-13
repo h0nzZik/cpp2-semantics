@@ -190,8 +190,7 @@ module CPP2-SYNTAX
                                 | Declaration
 
   syntax ParameterDeclarations ::= List{ParameterDeclaration,","}
-  syntax ParameterDeclarationList ::= "(" ")"
-                                    | "(" ParameterDeclarations ")"
+  syntax ParameterDeclarationList ::= "(" ParameterDeclarations ")"
 
   syntax ContractKind ::= "pre" | "post" | "assert"
 
@@ -200,54 +199,55 @@ module CPP2-SYNTAX
                     | "[" "[" ContractKind              LogicalOrExpression "]" "]"
                     | "[" "[" ContractKind              LogicalOrExpression "," String "]" "]"
 
-  syntax ReturnList ::= IdExpression ParameterDeclarationList
+  syntax ReturnList ::= "->" IdExpression
+                      | "->" ParameterDeclarationList
 
   syntax Contracts ::= List{Contract,""}
 
   syntax FunctionType ::= ParameterDeclarationList "throws" ReturnList Contracts
-                        | ParameterDeclarationList "throws" ReturnList
-                        | ParameterDeclarationList "throws"            Contracts
-                        | ParameterDeclarationList "throws"
                         | ParameterDeclarationList          ReturnList Contracts
-                        | ParameterDeclarationList          ReturnList
-                        | ParameterDeclarationList                     Contracts
-                        | ParameterDeclarationList
 
 
 
 
 
-  syntax UnnamedDeclaration ::= FunctionType "=" Statement
-                              | IdExpression "=" Statement
-                              | "=" Statement
-                              | IdExpression
+  syntax UnnamedDeclaration ::= ":" FunctionType "=" Statement
+                              | ":" IdExpression "=" Statement
+                              | ":"              "=" Statement
+                              | ":" IdExpression
 
   syntax Declaration ::= Identifier UnnamedDeclaration
-  syntax Declarations ::= List{Declaration,""}
+  syntax Declarations ::= List{Declaration,""} [seqstrict(c)]
   syntax TranslationUnit ::= Declarations 
 
 endmodule
 
 module CPP2
-    imports CPP2-SYNTAX 
-    imports DOMAINS
+  imports CPP2-SYNTAX 
+  imports DOMAINS
 
-   syntax KItem ::= process(TranslationUnit)
+  syntax Phase ::= TranslationPhase() | ExecutionPhase()
+  syntax TranslateResult
+  syntax ExecResult
 
-   configuration <T>
-                  <threads>
-                    <thread type="Set" multiplicity="*">
-                      <k> process($PGM) </k>
-                      <env> .Map </env>
-                      <id> 0 </id>
-                    </thread>
-                  </threads>
-                  <store> .Map </store>
+  configuration <T>
+                  <phase> TranslationPhase() </phase>
+                  <k> $PGM:TranslationUnit </k>
+                  <declarations> .Map </declarations>
                 </T>
 
 
-    syntax ThreadId ::= threadId(Int)
+  syntax KItem ::= executeMain()
+  
+  // rule <k> D:Declaration Ds:Declarations => Ds </k>
 
-    syntax KResult ::= Bool | Int | ThreadId
+  rule <k> .Declarations => executeMain() </k>
+       <phase> TranslationPhase() => ExecutionPhase() </phase>
+
+  context alias [c]: <k> HERE:K ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
+  context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
+
+
+  syntax KResult ::= Bool | Int
 
 endmodule
