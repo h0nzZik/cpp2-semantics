@@ -357,4 +357,16 @@ module CPP2
   rule [ite-true]: ite(boolValue(true), X, _Y) => X
   rule [ite-false]: ite(boolValue(false), _X, Y) => Y
 
+  // Are those two value categories enough for the simplified language?
+  // Also, we query on value categories in translation time
+  syntax ValueCategoryC ::= lvalue() | rvalue()
+  syntax ValueCategoryF ::= valueCategoryOf(Expression) [seqstrict(c)]
+  syntax ValueCategory ::= ValueCategoryC | ValueCategoryF
+  syntax TranslateResult ::= ValueCategoryC
+
+  // I think this is not true, because it depends on whether the identifier is an in/out parameter
+  // See https://github.com/hsutter/708/blob/main/708.pdf
+  rule valueCategoryOf(_X:Identifier) => lvalue()
+  rule valueCategoryOf(_) => rvalue()
+
 endmodule
