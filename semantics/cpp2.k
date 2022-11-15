@@ -326,7 +326,7 @@ module CPP2
 
   syntax Operation ::= declareGlobalFunction(Identifier, FunctionType, FunctionBody) [seqstrict(c;3)]
 
-  rule <k> declareGlobalFunction(X:Identifier, FT:FunctionType, B:FunctionBody) => .K ...</k>
+  rule <k> declareGlobalFunction(X:Identifier, FT:FunctionType, B:FunctionBodyC) => .K ...</k>
      <global-function-declarations>... .Map => (X |-> globalFunction(X, FT, B)) ...</global-function-declarations>
      <global-function-declarations-list>... (.List => ListItem(X)) </global-function-declarations-list>
 
