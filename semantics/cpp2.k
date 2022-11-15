@@ -123,7 +123,8 @@ module CPP2-SYNTAX
   syntax IdExpression ::= QualifiedId
                         > UnqualifiedId
 
-  syntax ExpressionStatement ::= Expression
+  syntax ExpressionStatement ::= Expression ";"
+                               > Expression 
 
   syntax SelectionStatement ::= "if" "constexpr" Expression CompoundStatement
                               | "if"             Expression CompoundStatement
