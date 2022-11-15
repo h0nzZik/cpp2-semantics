@@ -10,6 +10,8 @@ module CPP2
   syntax ExecResult ::= Int | String | Bool
   syntax KResult ::= ExecResult
 
+  context alias [parse]: <k> HERE:K ... </k> requires false
+
   context alias [c]: <k> HERE:K ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
   context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
 

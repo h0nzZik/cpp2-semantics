@@ -11,7 +11,7 @@ default: properties
 .PHONY: clean
 
 clean:
-	rm -rf ${KOMPILED_DIR}
+	rm -rf ${KOMPILED_DIR} ${PARSER_KOMPILED_DIR}
 
 ${PARSER_TIMESTAMP}: semantics/parsing.k semantics/syntax.k
 	mkdir -p ${PARSER_KOMPILED_DIR}
