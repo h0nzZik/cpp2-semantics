@@ -174,14 +174,13 @@ module CPP2-SYNTAX
                      > ReturnStatement
                      > IterationStatement
                      > CompoundStatement
-                     > Declaration // TODO check whether this is correct; the spec says "declaration-statement"
-                     > ExpressionStatement
+                     > Declaration        //[klabel(lblDeclaration), symbol]
+                     > ExpressionStatement //[klabel(lblExpressionStmt), symbol]
                      > Contract
 
-  syntax Statements ::= List{Statement,";"} [seqstrict(c)]
+  syntax Statements ::= NeList{Statement,""} [seqstrict(c)]
 
-  syntax CompoundStatement ::= "{" Statements ";" "}"
-                             | "{" "}"
+  syntax CompoundStatement ::= "{" Statements "}"
   
   syntax ThisSpecifier ::= "implicit" | "virtual" | "override" | "final"
 
@@ -389,8 +388,8 @@ module CPP2
        <blocks> Blocks:List => .List </blocks>
        <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(!I:Int)) </returnVariables>
 
-  rule [compound-nonempty]: <k> ({ Stmts:Statements ; }):CompoundStatement => enterBlock() ~> Stmts ~> leaveBlock() ...</k> 
-  rule [compound-empty]: <k> ({ }):CompoundStatement => enterBlock() ~> leaveBlock() ...</k> 
+  rule [compound-nonempty]: <k> ({ Stmts:Statements }):CompoundStatement => enterBlock() ~> Stmts ~> leaveBlock() ...</k> 
+  //rule [compound-empty]: <k> ({ }):CompoundStatement => enterBlock() ~> leaveBlock() ...</k> 
 
   syntax Operation ::= enterBlock() | leaveBlock()
 
