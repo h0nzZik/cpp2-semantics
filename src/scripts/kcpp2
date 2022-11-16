@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+KCPP2_INSTALL_PREFIX=""
+KCPP2_PARSER_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/parser/cpp2-parser-kompiled"
+KCPP2_SEMANTICS_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/parser/cpp2-kompiled"
+
+set -eu
+
+directory_flag=(--directory "$KCPP2_PARSER_DIR")
+parse()        { kparse "${directory_flag[@]}" "$1" ; }
+disambiguate() { krun   "${directory_flag[@]}" --parser cat "$1" ; }
+
+input_pgm="$1"; shift
+parse "$input_pgm" > "$input_pgm".deparametrized.kore
+disambiguate "$input_pgm".deparametrized.kore

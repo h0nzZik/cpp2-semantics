@@ -2,7 +2,6 @@ requires "syntax.k"
 
 module CPP2
   imports CPP2-SYNTAX 
-  imports K-AMBIGUITIES
   imports DOMAINS
 
   syntax Phase ::= TranslationPhase() | ExecutionPhase()
