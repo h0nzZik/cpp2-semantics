@@ -5,6 +5,7 @@ TIMESTAMP := ${KOMPILED_DIR}/cpp2-kompiled/timestamp
 PARSER_KOMPILED_DIR := ${BUILD_ROOT}/cpp2-parser-kompiled
 PARSER_TIMESTAMP := ${PARSER_KOMPILED_DIR}/parsing-kompiled/timestamp
 
+KRUN_FLAGS :=
 
 default: properties
 
@@ -22,16 +23,16 @@ ${TIMESTAMP}: semantics/cpp2.k semantics/syntax.k
 	kompile --backend haskell --directory ${KOMPILED_DIR} $<
 
 smoke-test: ${TIMESTAMP} tests/main-return-42.cpp2
-	krun --directory ${KOMPILED_DIR} tests/main-return-42.cpp2
+	krun ${KRUN_FLAGS} --directory ${KOMPILED_DIR} tests/main-return-42.cpp2
 
 nested-calls: ${TIMESTAMP} tests/nested-calls.cpp2
-	krun --directory ${KOMPILED_DIR} tests/nested-calls.cpp2
+	krun ${KRUN_FLAGS} --directory ${KOMPILED_DIR} tests/nested-calls.cpp2
 
 local-variables: ${TIMESTAMP} tests/local-variables.cpp2
-	krun --directory ${KOMPILED_DIR} tests/local-variables.cpp2
+	krun ${KRUN_FLAGS} --directory ${KOMPILED_DIR} tests/local-variables.cpp2
 
 local-variables-parse: ${PARSER_TIMESTAMP} tests/local-variables.cpp2
-	krun --directory ${PARSER_KOMPILED_DIR} tests/local-variables.cpp2
+	krun ${KRUN_FLAGS} --directory ${PARSER_KOMPILED_DIR} tests/local-variables.cpp2
 
 properties: properties/spec.k ${TIMESTAMP}
 	kprove --directory ${KOMPILED_DIR} properties/spec.k
