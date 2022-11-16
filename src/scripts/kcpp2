@@ -1,15 +1,30 @@
 #!/usr/bin/env bash
 
-KCPP2_INSTALL_PREFIX=""
-KCPP2_PARSER_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/parser/cpp2-parser-kompiled"
-KCPP2_SEMANTICS_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/parser/cpp2-kompiled"
+# https://stackoverflow.com/a/246128/6209703
+KCPP2_SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+KCPP2_INSTALL_PREFIX=$(realpath "$KCPP2_SCRIPT_DIR/..")
+KCPP2_PARSER_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/parser/parsing-kompiled"
+KCPP2_SEMANTICS_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/semantics/cpp2-kompiled"
 
 set -eu
 
-directory_flag=(--directory "$KCPP2_PARSER_DIR")
+# TODO: work with temporary directories
+
+directory_flag=(--definition "$KCPP2_PARSER_DIR")
 parse()        { kparse "${directory_flag[@]}" "$1" ; }
-disambiguate() { krun   "${directory_flag[@]}" --parser cat "$1" ; }
+disambiguate() { krun   "${directory_flag[@]}" --parser cat "$1" --output kore ; }
+run()          { krun --definition "$KCPP2_SEMANTICS_DIR" --parser cat "$1" ; }
 
 input_pgm="$1"; shift
 parse "$input_pgm" > "$input_pgm".deparametrized.kore
-disambiguate "$input_pgm".deparametrized.kore
+disambiguate "$input_pgm".deparametrized.kore > "$input_pgm".disambiguated.kore
+
+prefix="Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'T'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(inj{SortDeclarations{}, SortKItem{}}("
+suffix="),dotk{}()))),Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\"0\")))"
+string=$(cat "$input_pgm".disambiguated.kore)
+foo=${string#"$prefix"}
+foo=${foo%"$suffix"}
+echo "inj{SortDeclarations{}, SortTranslationUnit{}}(${foo})" > "$input_pgm".disambiguated.stripped.kore
+
+run "$input_pgm".disambiguated.stripped.kore

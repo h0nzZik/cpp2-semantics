@@ -1,12 +1,23 @@
+# This toplevel Makefile first calls src/Makefile in order to install [kcpp2] to ${IROOT},
+# then runs the individual tests with [kcpp2].
 
-KRUN_FLAGS :=
+IROOT := $(abspath ./iroot)
+KCPP2 := ${IROOT}/bin/kcpp2
+
+.PHONY: kcpp2
+kcpp2: src/Makefile
+	$(MAKE) -C ./src INSTALL_PREFIX=${IROOT} install
 
 default: properties
 
 .PHONY: clean
 
-smoke-test: ${TIMESTAMP} tests/main-return-42.cpp2
-	krun ${KRUN_FLAGS} --directory ${KOMPILED_DIR} tests/main-return-42.cpp2
+clean:
+	$(MAKE) -C ./src clean
+	rm -rf ${IROOT}
+
+smoke-test: tests/main-return-42.cpp2 kcpp2
+	${KCPP2} tests/main-return-42.cpp2
 
 nested-calls: ${TIMESTAMP} tests/nested-calls.cpp2
 	krun ${KRUN_FLAGS} --directory ${KOMPILED_DIR} tests/nested-calls.cpp2

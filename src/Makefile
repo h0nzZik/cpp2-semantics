@@ -29,5 +29,5 @@ install: parser main scripts/kcpp2
 	mkdir -p ${INSTALL_PREFIX}/bin
 	mkdir -p ${INSTALL_PREFIX}/lib/kcpp2
 	cp scripts/kcpp2 ${INSTALL_PREFIX}/bin
-	cp -R ${PARSER_KOMPILED_DIR} ${INSTALL_PREFIX}/lib/kcpp2
-	cp -R ${KOMPILED_DIR} ${INSTALL_PREFIX}/lib/kcpp2
+	cp -R ${PARSER_KOMPILED_DIR} ${INSTALL_PREFIX}/lib/kcpp2/parser
+	cp -R ${KOMPILED_DIR} ${INSTALL_PREFIX}/lib/kcpp2/semantics
