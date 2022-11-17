@@ -9,16 +9,71 @@ KCPP2_SEMANTICS_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/semantics/cpp2-kompiled"
 
 set -eu
 
+# Parse arguments
+# https://github.com/util-linux/util-linux/blob/master/misc-utils/getopt-example.bash
+TEMP=$(getopt --long 'only-parse,parse-depth:' -n 'kcpp2' -- "$@")
+
+if [ $? -ne 0 ]; then
+	echo 'Terminating...' >&2
+	exit 1
+fi
+
+eval set -- "$TEMP"
+unset TEMP
+
+ONLY_PARSE=
+PARSE_DEPTH=
+INPUT_FILE=
+
+while true; do
+	case "$1" in
+		'--only-parse')
+			echo 'Only parse'
+            ONLY_PARSE="1"
+            shift
+			continue
+		;;
+		'--parse-depth')
+            PARSE_DEPTH="$2"
+			shift 2
+			continue
+		;;
+		'--')
+			shift
+			break
+		;;
+        *)
+			break
+        ;;
+	esac
+done
+
 # TODO: work with temporary directories
 
-directory_flag=(--definition "$KCPP2_PARSER_DIR")
-parse()        { kparse "${directory_flag[@]}" "$1" ; }
-disambiguate() { krun   "${directory_flag[@]}" --parser cat "$1" --output kore ; }
-run()          { krun --definition "$KCPP2_SEMANTICS_DIR" --parser cat "$1" ; }
+parse()        {
+    #echo 'Parsing';
+    kparse --definition "$KCPP2_PARSER_DIR" "$1" ;
+}
+disambiguate() {
+    #echo 'Disambiguating';
+    local krun_args=(--definition "$KCPP2_PARSER_DIR" --parser cat "$1" --output kore)
+    if [ -n "$PARSE_DEPTH" ]; then
+        krun_args+=(--depth "$PARSE_DEPTH");
+    fi
+    krun ${krun_args[*]};
+}
+run()          {
+    #echo 'Running';
+    krun --definition "$KCPP2_SEMANTICS_DIR" --parser cat "$1" ;
+}
 
 input_pgm="$1"; shift
 parse "$input_pgm" > "$input_pgm".deparametrized.kore
 disambiguate "$input_pgm".deparametrized.kore > "$input_pgm".disambiguated.kore
+
+if [ -n "$ONLY_PARSE" ]; then
+    exit 0;
+fi
 
 prefix="Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'T'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(inj{SortDeclarations{}, SortKItem{}}("
 suffix="),dotk{}()))),Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\"0\")))"

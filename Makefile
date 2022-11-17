@@ -17,7 +17,7 @@ clean:
 	rm -rf ${IROOT}
 
 smoke-test: tests/main-return-42.cpp2 kcpp2
-	${KCPP2} tests/main-return-42.cpp2
+	${KCPP2} --only-parse tests/main-return-42.cpp2
 
 nested-calls: ${TIMESTAMP} tests/nested-calls.cpp2
 	krun ${KRUN_FLAGS} --directory ${KOMPILED_DIR} tests/nested-calls.cpp2
