@@ -23,11 +23,11 @@ ${TIMESTAMP}: semantics/cpp2.k semantics/syntax.k
 	mkdir -p ${KOMPILED_DIR}
 	kompile --backend haskell --directory ${KOMPILED_DIR} $<
 
-INSTALL_PREFIX ?= /usr
+PREFIX ?= /usr
 
 install: parser main scripts/kcpp2
-	mkdir -p ${INSTALL_PREFIX}/bin
-	mkdir -p ${INSTALL_PREFIX}/lib/kcpp2
-	cp scripts/kcpp2 ${INSTALL_PREFIX}/bin
-	cp -R ${PARSER_KOMPILED_DIR} ${INSTALL_PREFIX}/lib/kcpp2/parser
-	cp -R ${KOMPILED_DIR} ${INSTALL_PREFIX}/lib/kcpp2/semantics
+	mkdir -p ${PREFIX}/bin
+	mkdir -p ${PREFIX}/lib/kcpp2
+	cp scripts/kcpp2 ${PREFIX}/bin
+	cp -R ${PARSER_KOMPILED_DIR} ${PREFIX}/lib/kcpp2/parser
+	cp -R ${KOMPILED_DIR} ${PREFIX}/lib/kcpp2/semantics

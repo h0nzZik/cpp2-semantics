@@ -34,17 +34,12 @@
         kcpp2 = prev.pkgs.llvmPackages_12.stdenv.mkDerivation rec {
           name = "kcpp2-${version}";
 
-          src = ./semantics;
+          src = ./src;
 
           buildInputs = [ kframework.packages.${prev.system}.k ];
 
-          buildPhase = ''
-            kompile --version
-          '';
-
           installPhase = ''
-            mkdir -p $out/bin
-            echo Hello > $out/bin/hello.txt
+            make PREFIX=$out install
           '';
         };
 
