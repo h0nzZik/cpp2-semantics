@@ -58,6 +58,8 @@ module PARSING
   rule checkSemicolons({ S:Statements }) => { checkSemicolons(S) }
   rule checkSemicolons(X:Id) => #SemicolonError(X)
   rule checkSemicolons(E:Expression ;) => E ;
+  rule checkSemicolons(S:ReturnStatement) => S
+  rule checkSemicolons(return E:Expression ;) => return E ;
 
   rule checkSemicolons((: Id:IdExpression ;)::UnnamedDeclaration ) => (: Id ;)::UnnamedDeclaration
   rule checkSemicolons(: X:IdExpression) => #SemicolonError(: X)
