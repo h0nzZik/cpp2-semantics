@@ -11,7 +11,7 @@ set -eu
 
 # Parse arguments
 # https://github.com/util-linux/util-linux/blob/master/misc-utils/getopt-example.bash
-TEMP=$(getopt --long 'stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
+TEMP=$(getopt --options '' --long 'verbose,stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
 
 if [ $? -ne 0 ]; then
 	echo 'Terminating...' >&2
@@ -21,6 +21,7 @@ fi
 eval set -- "$TEMP"
 unset TEMP
 
+VERBOSE=
 STOP_AFTER_DISAMBIGUATION=
 DISAMBIGUATE_DEPTH=
 INPUT_FILE=
@@ -28,7 +29,6 @@ INPUT_FILE=
 while true; do
 	case "$1" in
 		'--stop-after-disambiguation')
-			echo 'Only parse'
             STOP_AFTER_DISAMBIGUATION="1"
             shift
 			continue
@@ -37,6 +37,11 @@ while true; do
             DISAMBIGUATE_DEPTH="$2"
 			shift 2
 			continue
+        ;;
+        '--verbose')
+            VERBOSE="1"
+            shift
+            continue
 		;;
 		'--')
 			shift
@@ -48,11 +53,18 @@ while true; do
 	esac
 done
 
+execute_command() {
+    if [ -n "$VERBOSE" ]; then
+        echo "$@";
+    fi
+    $@
+}
+
 parse() {
     echo 'Parsing';
     local input_file="$1";
     local output_file="$2";
-    kparse --definition "$KCPP2_PARSER_DIR" --output-file "$output_file" "$input_file";
+    execute_command kparse --definition "$KCPP2_PARSER_DIR" --output-file "$output_file" "$input_file";
 }
 
 disambiguate() {
@@ -64,12 +76,12 @@ disambiguate() {
         krun_args+=(--depth "$DISAMBIGUATE_DEPTH");
     fi
     krun_args+=(--parser cat "$input_file")
-    krun ${krun_args[*]};
+    execute_command krun ${krun_args[*]};
 }
 
 run()          {
     echo 'Running';
-    krun --definition "$KCPP2_SEMANTICS_DIR" --parser cat "$1" ;
+    execute_command krun --definition "$KCPP2_SEMANTICS_DIR" --parser cat "$1" ;
 }
 
 
