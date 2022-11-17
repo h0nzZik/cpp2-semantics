@@ -13,3 +13,10 @@ nix build -L .
 ```sh
 nix shell --command make -C tests smoke-test
 ```
+
+# In-repository builds and tests
+
+```sh
+make -C src
+make KCPP2=(pwd)/.build/bin/kcpp2 -C tests smoke-test
+```

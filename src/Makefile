@@ -1,16 +1,24 @@
-BUILD_ROOT := ./build
-KOMPILED_DIR := ${BUILD_ROOT}/cpp2-kompiled
+BUILD_ROOT := ../.build
+KOMPILED_DIR := ${BUILD_ROOT}/lib/kcpp2/semantics/
 TIMESTAMP := ${KOMPILED_DIR}/cpp2-kompiled/timestamp
 
-PARSER_KOMPILED_DIR := ${BUILD_ROOT}/cpp2-parser-kompiled
+PARSER_KOMPILED_DIR := ${BUILD_ROOT}/lib/kcpp2/parser/
 PARSER_TIMESTAMP := ${PARSER_KOMPILED_DIR}/parsing-kompiled/timestamp
 
-default: parser main
+default: all
 
 .PHONY: parser main clean install
 
+all: parser main glue
+
 parser: ${PARSER_TIMESTAMP}
 main: ${TIMESTAMP}
+
+glue: ${BUILD_ROOT}/bin/kcpp2
+
+${BUILD_ROOT}/bin/kcpp2: scripts/kcpp2
+	mkdir -p ${BUILD_ROOT}/bin
+	cp $< $@
 
 clean:
 	rm -rf ${KOMPILED_DIR} ${PARSER_KOMPILED_DIR}
@@ -26,8 +34,9 @@ ${TIMESTAMP}: semantics/cpp2.k semantics/syntax.k
 PREFIX ?= /usr
 
 install: parser main scripts/kcpp2
+	mkdir -p ${PREFIX}
 	mkdir -p ${PREFIX}/bin
 	mkdir -p ${PREFIX}/lib/kcpp2
-	cp scripts/kcpp2 ${PREFIX}/bin
-	cp -R ${PARSER_KOMPILED_DIR} ${PREFIX}/lib/kcpp2/parser
-	cp -R ${KOMPILED_DIR} ${PREFIX}/lib/kcpp2/semantics
+	cp ${BUILD_ROOT}/bin/kcpp2 ${PREFIX}/bin
+	rm -rf ${PREFIX}/lib/kcpp2
+	cp -R ${BUILD_ROOT}/lib/kcpp2 ${PREFIX}/lib/kcpp2
