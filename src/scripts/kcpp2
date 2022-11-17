@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # https://stackoverflow.com/a/246128/6209703
 KCPP2_SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -7,16 +9,10 @@ KCPP2_INSTALL_PREFIX=$(realpath "$KCPP2_SCRIPT_DIR/..")
 KCPP2_PARSER_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/parser/parsing-kompiled"
 KCPP2_SEMANTICS_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/semantics/cpp2-kompiled"
 
-set -eu
 
 # Parse arguments
 # https://github.com/util-linux/util-linux/blob/master/misc-utils/getopt-example.bash
 TEMP=$(getopt --options '' --long 'verbose,stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
-
-if [ $? -ne 0 ]; then
-	echo 'Terminating...' >&2
-	exit 1
-fi
 
 eval set -- "$TEMP"
 unset TEMP
