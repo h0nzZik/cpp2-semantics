@@ -92,14 +92,28 @@ parse "$input_pgm" "$input_pgm".deparametrized.kore
 disambiguate "$input_pgm".deparametrized.kore "$input_pgm".disambiguated.kore
 
 if [ -n "$STOP_AFTER_DISAMBIGUATION" ]; then
+    kore-print --definition "$KCPP2_PARSER_DIR" "$input_pgm".disambiguated.kore
     exit 0;
 fi
 
 prefix="Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'T'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(inj{SortDeclarations{}, SortKItem{}}("
-suffix="),dotk{}()))),Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\"0\")))"
 string=$(cat "$input_pgm".disambiguated.kore)
 foo=${string#"$prefix"}
-foo=${foo%"$suffix"}
+# Remove suffix of the shape suffix="),dotk{}()))),Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\"$SOMETHING\")))"
+# where $SOMETHING is something.
+# First, remove the last three closing parentheses and the closing '"'.
+suffix1="\")))"
+foo=${foo%"$suffix1"}
+# Now, remove a number from the end.
+foo=$(echo "$foo" | sed -E 's/(.*)([0-9]+)/\1/')
+echo "$foo"
+# Now, remove the generated counter.
+suffix2=",Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\""
+foo=${foo%"$suffix2"}
+# Now. remove the rest
+suffix3="),dotk{}())))"
+foo=${foo%"$suffix3"}
+echo "$foo"
 echo "inj{SortDeclarations{}, SortTranslationUnit{}}(${foo})" > "$input_pgm".disambiguated.stripped.kore
 
 run "$input_pgm".disambiguated.stripped.kore

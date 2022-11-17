@@ -3,6 +3,7 @@
 
 IROOT := $(abspath ./iroot)
 KCPP2 := ${IROOT}/bin/kcpp2
+KCPP2FLAGS := --verbose
 
 .PHONY: kcpp2
 kcpp2: src/Makefile
@@ -17,13 +18,13 @@ clean:
 	rm -rf ${IROOT}
 
 smoke-test: tests/main-return-42.cpp2 kcpp2
-	${KCPP2} --verbose --stop-after-disambiguation --disambiguation-depth 1 tests/main-return-42.cpp2
+	${KCPP2} ${KCPP2FLAGS} --stop-after-disambiguation tests/main-return-42.cpp2
+
+local-variables: ${TIMESTAMP} tests/local-variables.cpp2
+	${KCPP2} ${KCPP2FLAGS} --stop-after-disambiguation tests/local-variables.cpp2
 
 nested-calls: ${TIMESTAMP} tests/nested-calls.cpp2
 	krun ${KRUN_FLAGS} --directory ${KOMPILED_DIR} tests/nested-calls.cpp2
-
-local-variables: ${TIMESTAMP} tests/local-variables.cpp2
-	krun ${KRUN_FLAGS} --directory ${KOMPILED_DIR} tests/local-variables.cpp2
 
 local-variables-parse: ${PARSER_TIMESTAMP} tests/local-variables.cpp2
 	krun ${KRUN_FLAGS} --directory ${PARSER_KOMPILED_DIR} tests/local-variables.cpp2
