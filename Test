@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -ue pipefail
+
+
+error() { echo "$@"; exit 1 ; }
+
+(cd src/; make BUILD_ROOT=../.build) || error "Build failed."
+echo "Passed."
