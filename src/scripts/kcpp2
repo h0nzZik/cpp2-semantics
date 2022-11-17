@@ -11,7 +11,7 @@ set -eu
 
 # Parse arguments
 # https://github.com/util-linux/util-linux/blob/master/misc-utils/getopt-example.bash
-TEMP=$(getopt --long 'only-parse,parse-depth:' -n 'kcpp2' -- "$@")
+TEMP=$(getopt --long 'stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
 
 if [ $? -ne 0 ]; then
 	echo 'Terminating...' >&2
@@ -21,20 +21,20 @@ fi
 eval set -- "$TEMP"
 unset TEMP
 
-ONLY_PARSE=
-PARSE_DEPTH=
+STOP_AFTER_DISAMBIGUATION=
+DISAMBIGUATE_DEPTH=
 INPUT_FILE=
 
 while true; do
 	case "$1" in
-		'--only-parse')
+		'--stop-after-disambiguation')
 			echo 'Only parse'
-            ONLY_PARSE="1"
+            STOP_AFTER_DISAMBIGUATION="1"
             shift
 			continue
 		;;
-		'--parse-depth')
-            PARSE_DEPTH="$2"
+		'--disambiguation-depth')
+            DISAMBIGUATE_DEPTH="$2"
 			shift 2
 			continue
 		;;
@@ -48,30 +48,38 @@ while true; do
 	esac
 done
 
-# TODO: work with temporary directories
-
-parse()        {
-    #echo 'Parsing';
-    kparse --definition "$KCPP2_PARSER_DIR" "$1" ;
+parse() {
+    echo 'Parsing';
+    local input_file="$1";
+    local output_file="$2";
+    kparse --definition "$KCPP2_PARSER_DIR" --output-file "$output_file" "$input_file";
 }
+
 disambiguate() {
-    #echo 'Disambiguating';
-    local krun_args=(--definition "$KCPP2_PARSER_DIR" --parser cat "$1" --output kore)
-    if [ -n "$PARSE_DEPTH" ]; then
-        krun_args+=(--depth "$PARSE_DEPTH");
+    echo 'Disambiguating';
+    local input_file="$1";
+    local output_file="$2";
+    local krun_args=(--definition "$KCPP2_PARSER_DIR" --output kore --output-file "$output_file")
+    if [ -n "$DISAMBIGUATE_DEPTH" ]; then
+        krun_args+=(--depth "$DISAMBIGUATE_DEPTH");
     fi
+    krun_args+=(--parser cat "$input_file")
     krun ${krun_args[*]};
 }
+
 run()          {
-    #echo 'Running';
+    echo 'Running';
     krun --definition "$KCPP2_SEMANTICS_DIR" --parser cat "$1" ;
 }
 
-input_pgm="$1"; shift
-parse "$input_pgm" > "$input_pgm".deparametrized.kore
-disambiguate "$input_pgm".deparametrized.kore > "$input_pgm".disambiguated.kore
 
-if [ -n "$ONLY_PARSE" ]; then
+# TODO: work with temporary directories
+
+input_pgm="$1"; shift
+parse "$input_pgm" "$input_pgm".deparametrized.kore
+disambiguate "$input_pgm".deparametrized.kore "$input_pgm".disambiguated.kore
+
+if [ -n "$STOP_AFTER_DISAMBIGUATION" ]; then
     exit 0;
 fi
 
