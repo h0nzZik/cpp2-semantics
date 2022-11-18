@@ -16,7 +16,7 @@ test_disambiguate() {
     check "${output_file}" "${expected_file}"
 }
 
-make -q -C src || error "Build failed."
+make -s -C src || error "Build failed."
 PATH="${build_dir}/bin:$PATH"
 mkdir -p .build/tests/
 test_disambiguate tests/main-return-42.cpp2

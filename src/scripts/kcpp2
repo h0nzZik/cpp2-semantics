@@ -9,7 +9,6 @@ KCPP2_INSTALL_PREFIX=$(realpath "$KCPP2_SCRIPT_DIR/..")
 KCPP2_PARSER_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/parser/parsing-kompiled"
 KCPP2_SEMANTICS_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/semantics/cpp2-kompiled"
 
-
 # Parse arguments
 # https://github.com/util-linux/util-linux/blob/master/misc-utils/getopt-example.bash
 TEMP=$(getopt --options '' --long 'verbose,stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
@@ -57,14 +56,12 @@ execute_command() {
 }
 
 parse() {
-    echo 'Parsing';
     local input_file="$1";
     local output_file="$2";
     execute_command kparse --definition "$KCPP2_PARSER_DIR" --output-file "$output_file" "$input_file";
 }
 
 disambiguate() {
-    echo 'Disambiguating';
     local input_file="$1";
     local output_file="$2";
     local krun_args=(--definition "$KCPP2_PARSER_DIR" --output kore --output-file "$output_file")
@@ -77,7 +74,6 @@ disambiguate() {
 
 run() {
     local input_file="$1"; shift
-    echo 'Running';
     execute_command krun --definition "$KCPP2_SEMANTICS_DIR" --parser cat "$input_file" ;
 }
 
@@ -90,6 +86,7 @@ extract_parsed_translation_unit() {
     local input_file="$1";
     local output_file="$2";
 
+    # TODO: Move this script to pyk?
     prefix="Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'T'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(inj{SortDeclarations{}, SortKItem{}}("
     string=$(cat "$input_file")
     foo=${string#"$prefix"}
@@ -100,20 +97,18 @@ extract_parsed_translation_unit() {
     foo=${foo%"$suffix1"}
     # Now, remove a number from the end.
     foo=$(echo "$foo" | sed -E 's/(.*)([0-9]+)/\1/')
-    echo "$foo"
     # Now, remove the generated counter.
     suffix2=",Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\""
     foo=${foo%"$suffix2"}
     # Now. remove the rest
     suffix3="),dotk{}())))"
     foo=${foo%"$suffix3"}
-    echo "$foo"
     echo "inj{SortDeclarations{}, SortTranslationUnit{}}(${foo})" > "$output_file"
 }
 
 input_pgm="$1"; shift
 parse "$input_pgm" "$input_pgm".deparametrized.kore
 disambiguate "$input_pgm".deparametrized.kore "$input_pgm".disambiguated.kore
-extract_parsed_translation_unit "$input_pgm".disambiguated.kore "$input_pgm".disambiguated.stripped.kore
-[[ -z "$STOP_AFTER_DISAMBIGUATION" ]] || { pretty_print "$input_pgm".disambiguated.kore; exit ; }
+extract_parsed_translation_unit "$input_pgm".disambiguated.kore "$input_pgm".stripped.kore
+[[ -z "$STOP_AFTER_DISAMBIGUATION" ]] || { pretty_print "$input_pgm".stripped.kore; exit ; }
 run "$input_pgm".disambiguated.stripped.kore
