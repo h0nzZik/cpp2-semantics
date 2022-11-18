@@ -12,8 +12,8 @@ local-variables: local-variables.cpp2
 nested-calls: nested-calls.cpp2
 	${KCPP2} ${KCPP2FLAGS} nested-calls.cpp2
 
-local-variables-parse: ${PARSER_TIMESTAMP} local-variables.cpp2
-	${KCPP2} ${KCPP2FLAGS} local-variables.cpp2
+parse-local-variable: ${PARSER_TIMESTAMP} parse-local-variable.cpp2
+	${KCPP2} ${KCPP2FLAGS} --stop-after-disambiguation parse-local-variable.cpp2
 
 # TODO we have to wrap this
 properties: properties/spec.k ${TIMESTAMP}

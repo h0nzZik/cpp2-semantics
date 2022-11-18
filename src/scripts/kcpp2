@@ -71,7 +71,7 @@ disambiguate() {
     echo 'Disambiguating';
     local input_file="$1";
     local output_file="$2";
-    local krun_args=(--definition "$KCPP2_PARSER_DIR" --output kore --output-file "$output_file")
+    local krun_args=(--definition "$KCPP2_PARSER_DIR" --output kore --output-file "$output_file" --statistics)
     if [ -n "$DISAMBIGUATE_DEPTH" ]; then
         krun_args+=(--depth "$DISAMBIGUATE_DEPTH");
     fi
