@@ -9,13 +9,6 @@ KCPP2_INSTALL_PREFIX=$(realpath "$KCPP2_SCRIPT_DIR/..")
 KCPP2_PARSER_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/parser/parsing-kompiled"
 KCPP2_SEMANTICS_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/semantics/cpp2-kompiled"
 
-# Parse arguments
-# https://github.com/util-linux/util-linux/blob/master/misc-utils/getopt-example.bash
-TEMP=$(getopt --options '' --long 'verbose,stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
-
-eval set -- "$TEMP"
-unset TEMP
-
 VERBOSE=
 STOP_AFTER_DISAMBIGUATION=
 DISAMBIGUATE_DEPTH=
@@ -105,6 +98,9 @@ extract_parsed_translation_unit() {
     foo=${foo%"$suffix3"}
     echo "inj{SortDeclarations{}, SortTranslationUnit{}}(${foo})" > "$output_file"
 }
+
+# Main
+# ====
 
 input_pgm="$1"; shift
 parse "$input_pgm" "$input_pgm".deparametrized.kore
