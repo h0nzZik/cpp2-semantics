@@ -1,10 +1,18 @@
-KCPP2 ?= kcpp2
-KCPP2FLAGS ?= --verbose
+TEMP_DIR=../.build/tests
+
+KCPP2 ?= KCPP2_TMP=${TEMP_DIR}/ kcpp2
+KCPP2FLAGS ?=
+CHECK := diff -U3
 
 .PHONY: smoke-test
 
-smoke-test: main-return-42.cpp2
-	${KCPP2} ${KCPP2FLAGS} --stop-after-disambiguation $<
+${TEMP_DIR}/%.parser.out: %.cpp2
+
+%.test-parse:
+	${KCPP2} ${KCPP2FLAGS} --stop-after-disambiguation $*.cpp2 > ${TEMP_DIR}/$*.parser.out
+	${CHECK} ${TEMP_DIR}/$*.parser.out $*.parsed
+
+smoke-test: main-return-42.test-parse
 
 local-variables: local-variables.cpp2
 	${KCPP2} ${KCPP2FLAGS} --stop-after-disambiguation $<

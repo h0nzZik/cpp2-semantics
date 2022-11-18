@@ -1,0 +1,1 @@
+main : ( .ParameterDeclarations ) -> int .Contracts = { return 42 ;  .Statements }  .Declarations

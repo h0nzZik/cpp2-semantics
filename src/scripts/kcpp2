@@ -1,119 +1,94 @@
 #!/usr/bin/env bash
 
-# https://stackoverflow.com/a/246128/6209703
-KCPP2_SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+set -euo pipefail
 
-KCPP2_INSTALL_PREFIX=$(realpath "$KCPP2_SCRIPT_DIR/..")
-KCPP2_PARSER_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/parser/parsing-kompiled"
-KCPP2_SEMANTICS_DIR="$KCPP2_INSTALL_PREFIX/lib/kcpp2/semantics/cpp2-kompiled"
+kcpp2_script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+kcpp2_install_prefix=$(realpath "$kcpp2_script_dir/..")
+kcpp2_parser_dir="$kcpp2_install_prefix/lib/kcpp2/parser/parsing-kompiled"
+kcpp2_semantics_dir="$kcpp2_install_prefix/lib/kcpp2/semantics/cpp2-kompiled"
 
-set -eu
-
-# Parse arguments
-# https://github.com/util-linux/util-linux/blob/master/misc-utils/getopt-example.bash
-TEMP=$(getopt --options '' --long 'verbose,stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
-
-if [ $? -ne 0 ]; then
-	echo 'Terminating...' >&2
-	exit 1
-fi
-
-eval set -- "$TEMP"
-unset TEMP
-
-VERBOSE=
-STOP_AFTER_DISAMBIGUATION=
-DISAMBIGUATE_DEPTH=
-INPUT_FILE=
-
-while true; do
-	case "$1" in
-		'--stop-after-disambiguation')
-            STOP_AFTER_DISAMBIGUATION="1"
-            shift
-			continue
-		;;
-		'--disambiguation-depth')
-            DISAMBIGUATE_DEPTH="$2"
-			shift 2
-			continue
-        ;;
-        '--verbose')
-            VERBOSE="1"
-            shift
-            continue
-		;;
-		'--')
-			shift
-			break
-		;;
-        *)
-			break
-        ;;
-	esac
-done
+error() { echo "$@" ; exit 1; }
 
 execute_command() {
-    if [ -n "$VERBOSE" ]; then
-        echo "$@";
-    fi
+    ! "$verbose" || echo "$@";
     $@
 }
 
 parse() {
-    echo 'Parsing';
     local input_file="$1";
     local output_file="$2";
-    execute_command kparse --definition "$KCPP2_PARSER_DIR" --output-file "$output_file" "$input_file";
+    execute_command kparse --definition "$kcpp2_parser_dir" --output-file "$output_file" "$input_file";
 }
 
 disambiguate() {
-    echo 'Disambiguating';
     local input_file="$1";
     local output_file="$2";
-    local krun_args=(--definition "$KCPP2_PARSER_DIR" --output kore --output-file "$output_file")
-    if [ -n "$DISAMBIGUATE_DEPTH" ]; then
-        krun_args+=(--depth "$DISAMBIGUATE_DEPTH");
-    fi
+    local krun_args=(--definition "$kcpp2_parser_dir" --output kore --output-file "$output_file")
+    krun_args+=( "${disambiguate_depth[@]}" )
     krun_args+=(--parser cat "$input_file")
-    execute_command krun ${krun_args[*]};
+    execute_command krun "${krun_args[@]}";
 }
 
-run()          {
-    echo 'Running';
-    execute_command krun --definition "$KCPP2_SEMANTICS_DIR" --parser cat "$1" ;
+run() {
+    local input_file="$1"; shift
+    execute_command krun --definition "$kcpp2_semantics_dir" --parser cat "$input_file" ;
+}
+
+pretty_print() {
+    local input_kore_file="$1"; shift
+    execute_command kore-print --definition "$kcpp2_parser_dir" "$input_kore_file"
+}
+
+extract_parsed_translation_unit() {
+    local input_file="$1";
+    local output_file="$2";
+
+    # TODO: Move this script to pyk?
+    prefix="Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'T'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(inj{SortDeclarations{}, SortKItem{}}("
+    string=$(cat "$input_file")
+    foo=${string#"$prefix"}
+    # Remove suffix of the shape suffix="),dotk{}()))),Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\"$SOMETHING\")))"
+    # where $SOMETHING is something.
+    # First, remove the last three closing parentheses and the closing '"'.
+    suffix1="\")))"
+    foo=${foo%"$suffix1"}
+    # Now, remove a number from the end.
+    foo=$(echo "$foo" | sed -E 's/(.*)([0-9]+)/\1/')
+    # Now, remove the generated counter.
+    suffix2=",Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\""
+    foo=${foo%"$suffix2"}
+    # Now. remove the rest
+    suffix3="),dotk{}())))"
+    foo=${foo%"$suffix3"}
+    echo "inj{SortDeclarations{}, SortTranslationUnit{}}(${foo})" > "$output_file"
 }
 
 
-# TODO: work with temporary directories
+# Main
+# ====
 
-input_pgm="$1"; shift
-parse "$input_pgm" "$input_pgm".deparametrized.kore
-disambiguate "$input_pgm".deparametrized.kore "$input_pgm".disambiguated.kore
+verbose=false
+disambiguate_only=false
+disambiguate_depth=()
+input_file=
+while [[ $# -gt 0 ]]; do
+    arg="$1"; shift
+	case "$arg" in
+		'--stop-after-disambiguation') disambiguate_only=true;  continue ;;
+		'--disambiguation-depth')      disambiguate_depth=(--depth "$1"); shift
+		                               disambiguate_only=true # If disambiguation is not complete, then no point trying to run.
+		                               continue ;;
+        '--verbose')                   verbose=true;            shift; continue ;;
+        *)  [[ -z "$input_file" ]] || error "Too many arguments."
+            input_file="$arg"; continue ;;
+	esac
+done
+[[ -n "$input_file" ]] || { error "Input file not specified." ; }
 
-if [ -n "$STOP_AFTER_DISAMBIGUATION" ]; then
-    kore-print --definition "$KCPP2_PARSER_DIR" "$input_pgm".disambiguated.kore
-    exit 0;
-fi
-
-prefix="Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'T'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(inj{SortDeclarations{}, SortKItem{}}("
-string=$(cat "$input_pgm".disambiguated.kore)
-foo=${string#"$prefix"}
-# Remove suffix of the shape suffix="),dotk{}()))),Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\"$SOMETHING\")))"
-# where $SOMETHING is something.
-# First, remove the last three closing parentheses and the closing '"'.
-suffix1="\")))"
-foo=${foo%"$suffix1"}
-# Now, remove a number from the end.
-foo=$(echo "$foo" | sed -E 's/(.*)([0-9]+)/\1/')
-echo "$foo"
-# Now, remove the generated counter.
-suffix2=",Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\""
-foo=${foo%"$suffix2"}
-# Now. remove the rest
-suffix3="),dotk{}())))"
-foo=${foo%"$suffix3"}
-echo "$foo"
-echo "inj{SortDeclarations{}, SortTranslationUnit{}}(${foo})" > "$input_pgm".disambiguated.stripped.kore
-
-run "$input_pgm".disambiguated.stripped.kore
+tmp_dir="${KCPP2_TMP:-$(mktemp -d)}"
+basename="${tmp_dir}/${input_file}"
+parse "$input_file" "$basename".kore
+disambiguate "$basename".kore "$basename".disambiguated.kore
+extract_parsed_translation_unit "$basename".disambiguated.kore "$basename".stripped.kore
+! $disambiguate_only || { pretty_print "$basename".stripped.kore; exit ; }
+run "$basename".disambiguated.stripped.kore
