@@ -182,7 +182,9 @@ module CPP2
   // without the [symbol] annotation, `kompile` crashes
   syntax NodeF ::= lookupVariableOccurrences(KItem) [symbol]
 
-  rule lookupVariableOccurrences(X:Int) => node(X)
+  rule lookupVariableOccurrences(X:Int => node(X))
+  rule lookupVariableOccurrences(return node(X) ; => node (return X ;))
+  //rule lookupVariableOccurrences((node(X:Statement) XS:Statements) => node(X XS) )
 
   //context elaborateFunctionBody()
 
