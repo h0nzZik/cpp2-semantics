@@ -11,14 +11,13 @@ set -eu
 
 # Parse arguments
 # https://github.com/util-linux/util-linux/blob/master/misc-utils/getopt-example.bash
-TEMP=$(getopt --options '' --long 'verbose,result-format:,stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
+TEMP=$(getopt --options '' --long 'verbose,result-format:,stop-after-disambiguation,disambiguation-depth:,depth:' -n 'kcpp2' -- "$@")
 
 if [ $? -ne 0 ]; then
 	echo 'Terminating...' >&2
 	exit 1
 fi
 
-echo "TEMP: $TEMP"
 eval set -- "$TEMP"
 unset TEMP
 
@@ -27,6 +26,7 @@ STOP_AFTER_DISAMBIGUATION=
 DISAMBIGUATE_DEPTH=
 INPUT_FILE=
 RESULT_FORMAT="pretty"
+DEPTH=
 
 while true; do
 	case "$1" in
@@ -35,6 +35,11 @@ while true; do
             shift
 			continue
 		;;
+        '--depth')
+            DEPTH="$2"
+            shift 2
+            continue
+        ;;
 		'--disambiguation-depth')
             DISAMBIGUATE_DEPTH="$2"
 			shift 2
@@ -88,7 +93,13 @@ disambiguate() {
 
 run()          {
     echo 'Running';
-    execute_command krun --definition "$KCPP2_SEMANTICS_DIR" --parser cat "$1" ;
+    local input_file="$1";
+    local krun_args=(--definition "$KCPP2_SEMANTICS_DIR" --output "$RESULT_FORMAT")
+    if [ -n "$DEPTH" ]; then
+        krun_args+=(--depth "$DEPTH");
+    fi
+    krun_args+=(--parser cat "$input_file")
+    execute_command krun ${krun_args[*]} ;
 }
 
 
@@ -113,14 +124,14 @@ suffix1="\")))"
 foo=${foo%"$suffix1"}
 # Now, remove a number from the end.
 foo=$(echo "$foo" | sed -E 's/(.*)([0-9]+)/\1/')
-echo "$foo"
+#echo "$foo"
 # Now, remove the generated counter.
 suffix2=",Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\""
 foo=${foo%"$suffix2"}
 # Now. remove the rest
 suffix3="),dotk{}())))"
 foo=${foo%"$suffix3"}
-echo "$foo"
+#echo "$foo"
 echo "inj{SortDeclarations{}, SortTranslationUnit{}}(${foo})" > "$input_pgm".disambiguated.stripped.kore
 
 run "$input_pgm".disambiguated.stripped.kore

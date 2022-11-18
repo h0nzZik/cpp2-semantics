@@ -18,7 +18,7 @@ module PARSING
 
   syntax Statement ::= #AmbiguityError(Statement, Statement)
 
-  context alias [parse]: <k> HERE:K ... </k> [result(WellFormedChecked)] // requires isWellFormedChecked(HERE)  // 
+  context alias [c]: <k> HERE:K ... </k> [result(WellFormedChecked)] // requires isWellFormedChecked(HERE)  // 
 
   // We need both the subsorting AND the rule
   syntax WellFormedChecked ::= IllFormed | WellFormed

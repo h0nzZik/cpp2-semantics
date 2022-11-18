@@ -1,18 +1,72 @@
 requires "syntax.k"
 
+module ASTNODE
+     imports CPP2-SYNTAX 
+
+     syntax NodeC
+     // Generalize the AST so that NodeC can be plugged anywhere in it
+
+  syntax PrimaryExpression ::= NodeC
+  syntax PostfixExpression ::= NodeC
+  syntax PrefixExpression ::= NodeC
+  syntax IsAsExpression ::= NodeC
+  syntax MultiplicativeExpression ::= NodeC 
+  syntax AdditiveExpression ::= NodeC
+  syntax ShiftExpression ::= NodeC
+  syntax CompareExpression ::= NodeC
+  syntax RelationalExpression ::= NodeC
+  syntax EqualityExpression ::= NodeC
+  syntax BitAndExpression ::= NodeC
+  syntax BitXorExpression ::= NodeC
+  syntax BitOrExpression ::= NodeC
+  syntax LogicalAndExpression ::= NodeC
+  syntax LogicalOrExpression ::= NodeC
+  syntax AssignmentExpression ::= NodeC
+  syntax Expression ::= NodeC
+  syntax Expressions ::= NodeC 
+  syntax TemplateArgument ::= NodeC
+  syntax TemplateArgumentList ::= NodeC
+  syntax TemplateId ::= NodeC
+  syntax UnqualifiedId ::= NodeC
+  syntax QualifiedId ::= NodeC
+  syntax MemberNameSpecifier ::= NodeC
+  syntax NestedNameSpecifier ::= NodeC
+  syntax IdExpression ::= NodeC
+  syntax ExpressionStatement ::= NodeC
+  syntax SelectionStatement ::= NodeC
+  syntax ReturnStatement ::= NodeC 
+  syntax IterationStatement ::= NodeC
+  syntax NextClause ::= NodeC
+  syntax IsTypeConstraint ::= NodeC
+  syntax AsTypeCast ::= NodeC
+  syntax AltName ::= NodeC
+  syntax Alternative ::= NodeC
+  syntax Alternatives ::= NodeC
+  syntax InspectExpression ::= NodeC
+  syntax Statement ::= NodeC
+  syntax Statements ::= NodeC
+  syntax CompoundStatement ::= NodeC
+  syntax ParameterDeclaration ::= NodeC
+  syntax ParameterDeclarations ::= NodeC
+  syntax ParameterDeclarationList ::= NodeC
+  syntax Contract ::= NodeC
+  syntax ReturnList ::= NodeC
+  syntax Contracts ::= NodeC
+  syntax FunctionType ::= NodeC
+  syntax UnnamedDeclaration ::= NodeC
+  syntax Declaration ::= NodeC
+  syntax Declarations ::= NodeC
+  syntax TranslationUnit ::= NodeC
+endmodule
+
 module CPP2
-  imports CPP2-SYNTAX 
   imports DOMAINS
+  imports ASTNODE
 
   syntax Phase ::= TranslationPhase() | ExecutionPhase()
   syntax TranslateResult
   syntax ExecResult ::= Int | String | Bool
   syntax KResult ::= ExecResult
-
-  context alias [parse]: <k> HERE:K ... </k> requires false
-
-  context alias [c]: <k> HERE:K ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
-  context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
 
 
   // TODO: create context for this production
@@ -58,7 +112,7 @@ module CPP2
 
   configuration <T>
                   <phase> TranslationPhase() </phase>
-                  <k> $PGM:TranslationUnit </k>
+                  <k> translate($PGM:TranslationUnit) </k>
                   <global-function-declarations> .Map </global-function-declarations>
                   <global-variable-declarations> .Map </global-variable-declarations>
                   <translation-state>
@@ -78,24 +132,11 @@ module CPP2
                   <exit-code exit=""> 139 </exit-code>
                 </T>
 
-  // TODO move this to the execution section
-  // Memory
-  //------------------------------------------------------
-  syntax Operation ::= writeValue(ObjectID, Value) [seqstrict(c)]
+  //context alias [c]: <k> translate(HERE:K) ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
 
-  rule <k> writeValue(objectID(I), V) => .K ...</k>
-       <memory> M => M [ I <- V ] </memory>
+  syntax Operation ::= translate(KItem)
 
-  rule <k> readValue(objectID(I)) => V ...</k>
-       <memory>... I |-> V ...</memory>
-
-  // Names
-  //-----------------------------------------------------
-  rule <k> lookupObjectID(X) => ID ...</k>
-       <returnVariables>... (X |-> ID:ObjectIDC) ...</returnVariables>
-
-
-  rule <k> D:Declaration Ds:Declarations => declareGlobal(D) ~> Ds </k>
+  rule <k> translate(D:Declaration Ds:Declarations) => declareGlobal(D) ~> translate(Ds) </k>
 
   // Declares a global variable or a function
   syntax Operation ::= declareGlobal(Declaration)
@@ -110,7 +151,9 @@ module CPP2
   syntax TranslateResult ::= FunctionBodyC
 
 
-  syntax Operation ::= declareGlobalFunction(Identifier, FunctionType, FunctionBody) [seqstrict(c;3)]
+  syntax Operation ::= declareGlobalFunction(Identifier, FunctionType, FunctionBody) // [seqstrict(c;3)]
+
+  context declareGlobalFunction(_,_,HOLE:FunctionBody) [result(FunctionBodyC)]
 
   rule <k> declareGlobalFunction(X:Identifier, FT:FunctionType, B:FunctionBodyC) => .K ...</k>
      <global-function-declarations>... .Map => (X |-> globalFunction(X, FT, B)) ...</global-function-declarations>
@@ -120,7 +163,28 @@ module CPP2
   syntax Record ::= globalFunction(id: Identifier, type: FunctionType, body: FunctionBody)
 
   // TODO implement various passes through the statement
-  rule elaborateFunctionBody(S) => functionBody(S)
+  //rule elaborateFunctionBody(S) => functionBody(S)
+  
+  rule elaborateFunctionBody(S) => lookupVariableOccurrences(S)
+
+ 
+  // Represents an AST node
+  syntax NodeC ::= node(KItem)
+  syntax NodeF
+  syntax Node ::= NodeC | NodeF
+  syntax TranslateResult ::= NodeC
+
+  context alias [c]:
+  <k> lookupVariableOccurrences(HERE) ...</k>
+  <phase> TranslationPhase() </phase>
+  [context(lookupVariableOccurrences), result(NodeC)]
+
+  // without the [symbol] annotation, `kompile` crashes
+  syntax NodeF ::= lookupVariableOccurrences(KItem) [symbol]
+
+  rule lookupVariableOccurrences(X:Int) => node(X)
+
+  //context elaborateFunctionBody()
 
   // What we have to do when processing a function (anonymous or not)?
   // 2. name lookup
@@ -140,6 +204,24 @@ module CPP2
 
 
   // Execution phase
+
+  // Memory
+  //------------------------------------------------------
+  syntax Operation ::= writeValue(ObjectID, Value) [seqstrict(c)]
+
+  rule <k> writeValue(objectID(I), V) => .K ...</k>
+       <memory> M => M [ I <- V ] </memory>
+
+  rule <k> readValue(objectID(I)) => V ...</k>
+       <memory>... I |-> V ...</memory>
+
+  // Names
+  //-----------------------------------------------------
+  rule <k> lookupObjectID(X) => ID ...</k>
+       <returnVariables>... (X |-> ID:ObjectIDC) ...</returnVariables>
+
+
+  context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
 
   syntax Operation ::= programStartup()
 
