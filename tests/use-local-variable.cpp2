@@ -1,0 +1,9 @@
+f : () -> int = {
+    x: int = 1;
+    x = x + 1;
+    return x;
+}
+
+main : () -> int = {
+    return 0;
+}

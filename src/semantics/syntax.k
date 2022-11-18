@@ -98,7 +98,7 @@ module CPP2-SYNTAX
 
   syntax AssignmentExpression ::= LogicalOrExpression
   //                              | AssignmentExpression AssignmentOperator AssignmentExpression
-  //                            | AssignmentExpression AssignmentOperator LogicalOrExpression          [seqstrict(c), hybrid(IllFormed, WellFormed)]
+                              | AssignmentExpression AssignmentOperator LogicalOrExpression          [seqstrict(c), hybrid(IllFormed, WellFormed)]
 
   syntax Expression ::= AssignmentExpression
 
