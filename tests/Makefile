@@ -1,6 +1,6 @@
-TEMP_DIR=../.build
+TEMP_DIR=../.build/tests
 
-KCPP2 ?= kcpp2
+KCPP2 ?= KCPP2_TMP=${TEMP_DIR}/ kcpp2
 KCPP2FLAGS ?=
 CHECK := diff -U3
 
