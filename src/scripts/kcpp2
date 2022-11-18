@@ -85,8 +85,10 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -n "$input_file" ]] || { error "Input file not specified." ; }
 
-parse "$input_file" "$input_file".deparametrized.kore
-disambiguate "$input_file".deparametrized.kore "$input_file".disambiguated.kore
-extract_parsed_translation_unit "$input_file".disambiguated.kore "$input_file".stripped.kore
-! $disambiguate_only || { pretty_print "$input_file".stripped.kore; exit ; }
-run "$input_file".disambiguated.stripped.kore
+tmp_dir="${KCPP2_TMP:-$(mktemp -d)}"
+basename="${tmp_dir}/${input_file}"
+parse "$input_file" "$basename".kore
+disambiguate "$basename".kore "$basename".disambiguated.kore
+extract_parsed_translation_unit "$basename".disambiguated.kore "$basename".stripped.kore
+! $disambiguate_only || { pretty_print "$basename".stripped.kore; exit ; }
+run "$basename".disambiguated.stripped.kore
