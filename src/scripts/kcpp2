@@ -11,7 +11,6 @@ kcpp2_semantics_dir="$kcpp2_install_prefix/lib/kcpp2/semantics/cpp2-kompiled"
 verbose=
 disambiguate_only=
 disambiguate_depth=
-INPUT_FILE=
 
 while true; do
 	case "$1" in
