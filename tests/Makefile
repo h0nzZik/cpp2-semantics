@@ -7,10 +7,10 @@ CHECK := diff -U3
 .PHONY: smoke-test
 
 ${TEMP_DIR}/%.parser.out: %.cpp2
-	${KCPP2} ${KCPP2FLAGS} --stop-after-disambiguation $< > $@
 
-%.test-parse: ${TEMP_DIR}/%.parser.out %.parsed
-	${CHECK} $^
+%.test-parse:
+	${KCPP2} ${KCPP2FLAGS} --stop-after-disambiguation $*.cpp2 > ${TEMP_DIR}/$*.parser.out
+	${CHECK} ${TEMP_DIR}/$*.parser.out $*.parsed
 
 smoke-test: main-return-42.test-parse
 
