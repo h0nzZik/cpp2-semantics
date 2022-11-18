@@ -20,16 +20,15 @@ module PARSING
 
   context alias [parse]: <k> HERE:K ... </k> [result(WellFormedChecked)] // requires isWellFormedChecked(HERE)  // 
 
-  syntax WellFormedChecked //::= IllFormed | WellFormed
-  //syntax Bool ::= isWellFormedChecked(KItem) [function]
+  // We need both the subsorting AND the rule
+  syntax WellFormedChecked ::= IllFormed | WellFormed
+  rule isWellFormedChecked(X:KItem) => true requires isWellFormed(X) orBool isIllFormed(X)
 
   rule isWellFormed(amb(_,_)) => false
   rule isWellFormed(checkSemicolons(_):Declarations) => false
   rule isWellFormed(checkSemicolons(_):Declarations) => false
   rule isWellFormed(checkSemicolons(_):Declaration) => false
   rule isWellFormed(checkSemicolons(_):Statement) => false
-  rule isWellFormedChecked(X:KItem) => true requires isWellFormed(X) orBool isIllFormed(X)
-  //rule isWellFormedChecked(_) => false [owise]
   rule isWellFormed(_:Int) => true
   rule isWellFormed(_:String) => true
   rule isWellFormed(_:Identifier) => true
@@ -46,11 +45,6 @@ module PARSING
   rule isIllFormed(#SemicolonError(_):UnnamedDeclaration) => true
   rule isIllFormed(#AmbiguityError(_, _)) => true
 
-  // These are needed so that we can push it back into `disamb`s.
-  //rule isWellFormedChecked(#SemicolonError(_):Statement) => true
-  //rule isWellFormedChecked(#SemicolonError(_):UnnamedDeclaration) => true
-  //rule isWellFormedChecked(#AmbiguityError(_, _)) => true
-
   rule checkSemicolons(D:Declaration Ds:Declarations) => (checkSemicolons(D) checkSemicolons(Ds))
   rule checkSemicolons(.Declarations) => .Declarations
 
@@ -62,10 +56,17 @@ module PARSING
   rule amb(X, Y)::Statement => disamb(X, Y)
   rule amb(X, Y)::AssignmentExpression => disamb(X, Y)
 
-  syntax KItem ::= disamb(KItem, KItem) [seqstrict(parse)]
+  syntax KItem ::= disamb(KItem, KItem)
+  
+  context disamb(HOLE:KItem, _) [result(WellFormedChecked)]
+  
+  rule disamb(X:KItem, Y:KItem) => Y requires isIllFormed(X)
+  
+  context disamb(X, HOLE:KItem) requires isWellFormed(X) [result(WellFormedChecked)]
+  
   rule disamb(T1, T2) => #AmbiguityError(T1, T2) requires isWellFormed(T1) andBool isWellFormed(T2)
-  rule disamb(T1, T2) => T1 requires isWellFormedChecked(T1) andBool isWellFormedChecked(T2) andBool isWellFormed(T1) andBool isWellFormedChecked(T2)
-  rule disamb(T1, T2) => T2 requires isWellFormedChecked(T1) andBool isWellFormedChecked(T2) andBool isIllFormed(T1) andBool isWellFormedChecked(T2)
+
+  rule disamb(T1:KItem, T2:KItem) => T1 requires isWellFormed(T1) andBool isIllFormed(T2)
 
   rule checkSemicolons(amb(L, R))::Declarations => amb(checkSemicolons(L), checkSemicolons(R))
   rule checkSemicolons(amb(L, R))::Declaration => amb(checkSemicolons(L), checkSemicolons(R))

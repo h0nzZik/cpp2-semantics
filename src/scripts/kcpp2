@@ -11,13 +11,14 @@ set -eu
 
 # Parse arguments
 # https://github.com/util-linux/util-linux/blob/master/misc-utils/getopt-example.bash
-TEMP=$(getopt --options '' --long 'verbose,stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
+TEMP=$(getopt --options '' --long 'verbose,result-format:,stop-after-disambiguation,disambiguation-depth:' -n 'kcpp2' -- "$@")
 
 if [ $? -ne 0 ]; then
 	echo 'Terminating...' >&2
 	exit 1
 fi
 
+echo "TEMP: $TEMP"
 eval set -- "$TEMP"
 unset TEMP
 
@@ -25,6 +26,7 @@ VERBOSE=
 STOP_AFTER_DISAMBIGUATION=
 DISAMBIGUATE_DEPTH=
 INPUT_FILE=
+RESULT_FORMAT="pretty"
 
 while true; do
 	case "$1" in
@@ -41,6 +43,11 @@ while true; do
         '--verbose')
             VERBOSE="1"
             shift
+            continue
+        ;;
+        '--result-format')
+            RESULT_FORMAT="$2"
+            shift 2
             continue
 		;;
 		'--')
@@ -92,7 +99,7 @@ parse "$input_pgm" "$input_pgm".deparametrized.kore
 disambiguate "$input_pgm".deparametrized.kore "$input_pgm".disambiguated.kore
 
 if [ -n "$STOP_AFTER_DISAMBIGUATION" ]; then
-    kore-print --definition "$KCPP2_PARSER_DIR" "$input_pgm".disambiguated.kore
+    execute_command kore-print --definition "$KCPP2_PARSER_DIR" --output "$RESULT_FORMAT" "$input_pgm".disambiguated.kore
     exit 0;
 fi
 
