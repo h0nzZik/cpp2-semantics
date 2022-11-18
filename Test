@@ -18,6 +18,5 @@ test_disambiguate() {
 
 make -s -C src || error "Build failed."
 PATH="${build_dir}/bin:$PATH"
-mkdir -p .build/tests/
-test_disambiguate tests/main-return-42.cpp2
+make -C tests smoke-test
 echo "Passed."
