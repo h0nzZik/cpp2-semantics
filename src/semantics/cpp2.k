@@ -184,7 +184,9 @@ module CPP2
 
   rule lookupVariableOccurrences(X:Int => node(X))
   rule lookupVariableOccurrences(return node(X) ; => node (return X ;))
-  //rule lookupVariableOccurrences((node(X:Statement) XS:Statements) => node(X XS) )
+  rule lookupVariableOccurrences((.Statements):Statements => (node(.Statements):Statements))
+  rule lookupVariableOccurrences((((node(X:Statement):Statement) (node(XS:Statements):Statements)):Statements) => (node((X XS):Statements):Statements))
+  rule lookupVariableOccurrences(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
 
   //context elaborateFunctionBody()
 
