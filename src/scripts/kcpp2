@@ -75,7 +75,9 @@ while [[ $# -gt 0 ]]; do
     arg="$1"; shift
 	case "$arg" in
 		'--stop-after-disambiguation') disambiguate_only=true;  continue ;;
-		'--disambiguation-depth')      disambiguate_depth=(--depth "$1"); shift; continue ;;
+		'--disambiguation-depth')      disambiguate_depth=(--depth "$1"); shift
+		                               disambiguate_only=true # If disambiguation is not complete, then no point trying to run.
+		                               continue ;;
         '--verbose')                   verbose=true;            shift; continue ;;
         *)  [[ -z "$input_file" ]] || error "Too many arguments."
             input_file="$arg"; continue ;;
