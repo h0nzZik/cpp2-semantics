@@ -146,7 +146,7 @@ module CPP2
 
   // Represents function bodies
   syntax FunctionBodyC ::= functionBody(Statement)
-  syntax FunctionBodyF ::= elaborateFunctionBody(Statement)
+  syntax FunctionBodyF ::= elaborateFunctionBody(KItem)
   syntax FunctionBody ::= FunctionBodyC | FunctionBodyF
   syntax TranslateResult ::= FunctionBodyC
 
@@ -164,9 +164,12 @@ module CPP2
 
   // TODO implement various passes through the statement
   //rule elaborateFunctionBody(S) => functionBody(S)
-  
-  rule elaborateFunctionBody(S) => lookupVariableOccurrences(S)
 
+  // without the [symbol] annotation, `kompile` crashes when processing the context alias.
+  syntax NodeF ::= lookupVariableOccurrences(KItem) [symbol]  
+
+  context <k> elaborateFunctionBody(HOLE => lookupVariableOccurrences(HOLE)) ...</k> [result(NodeC)]
+  rule elaborateFunctionBody(node(X:Statement)) => functionBody(X)
  
   // Represents an AST node
   syntax NodeC ::= node(KItem)
@@ -179,8 +182,6 @@ module CPP2
   <phase> TranslationPhase() </phase>
   [context(lookupVariableOccurrences), result(NodeC)]
 
-  // without the [symbol] annotation, `kompile` crashes
-  syntax NodeF ::= lookupVariableOccurrences(KItem) [symbol]
 
   rule lookupVariableOccurrences(X:Int => node(X))
   rule lookupVariableOccurrences(return node(X) ; => node (return X ;))
@@ -229,7 +230,7 @@ module CPP2
 
   syntax Operation ::= programStartup()
 
-  rule <k> .Declarations => programStartup() </k>
+  rule <k> translate(.Declarations) => programStartup() </k>
        <phase> TranslationPhase() => ExecutionPhase() </phase>
 
   rule programStartup()
@@ -256,7 +257,7 @@ module CPP2
 
   rule [call-function]:
        <k> (callFunction(F:Identifier) ~> Rest:K) => writeValue(objectID(!I:Int), voidValue()) ~> S </k>
-       <global-function-declarations>... F |-> ( : _T:FunctionType = S:Statement):UnnamedDeclaration ...</global-function-declarations>
+       <global-function-declarations>... F |-> globalFunction(_, _T:FunctionType, functionBody(S:Statement)) ...</global-function-declarations>
        <stack>... (.List => ListItem(stackFrame(Rest, Blocks, RVs))) </stack>
        <blocks> Blocks:List => .List </blocks>
        <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(!I:Int)) </returnVariables>
