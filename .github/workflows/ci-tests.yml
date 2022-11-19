@@ -16,8 +16,8 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
     - name: Cachix
       uses: cachix/cachix-action@v12
-        with:
-          name: k-framework
+      with:
+        name: k-framework
 #    - name: Configure Cachix
 #      run: cachix use k-framework
     - name: Build & Test
