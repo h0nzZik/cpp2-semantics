@@ -91,6 +91,6 @@ tmp_dir="${KCPP2_TMP:-$(mktemp -d)}"
 basename="${tmp_dir}/$(basename ${input_file})"
 parse "$input_file" "$basename".kore
 disambiguate "$basename".kore "$basename".disambiguated.kore
+! $disambiguate_only || { pretty_print "$basename".disambiguated.kore; exit ; }
 extract_parsed_translation_unit "$basename".disambiguated.kore "$basename".stripped.kore
-! $disambiguate_only || { pretty_print "$basename".stripped.kore; exit ; }
 run "$basename".stripped.kore

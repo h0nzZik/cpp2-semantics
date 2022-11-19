@@ -32,6 +32,9 @@ module PARSING
   rule isWellFormed(_:Int) => true
   rule isWellFormed(_:String) => true
   rule isWellFormed(_:Identifier) => true
+  rule isWellFormed(_:AssignmentOperator) => true
+  rule isWellFormed(_:PostfixOperator) => true
+  rule isWellFormed(_:PrefixOperator) => true
 
   rule isIllFormed(amb(_,_)) => false
   rule isIllFormed(checkSemicolons(_):Declarations) => false
