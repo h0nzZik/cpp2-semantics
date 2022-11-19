@@ -18,5 +18,5 @@ test_disambiguate() {
 
 make -s -C src || error "Build failed."
 PATH="${build_dir}/bin:$PATH"
-make -C tests smoke-test
+make -C tests
 echo "Passed."
