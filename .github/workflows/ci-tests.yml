@@ -14,5 +14,7 @@ jobs:
     - uses: cachix/install-nix-action@v18
       with:
         nix_path: nixpkgs=channel:nixos-unstable
+    - name: Configure Cachix
+      run: cachix use k-framework
     - name: Build & Test
-      run: nix develop '.' --command './Test'
+      run: nix develop '.' -L --command './Test'
