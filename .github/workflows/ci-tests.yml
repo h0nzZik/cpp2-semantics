@@ -18,7 +18,5 @@ jobs:
       uses: cachix/cachix-action@v12
       with:
         name: k-framework
-#    - name: Configure Cachix
-#      run: cachix use k-framework
     - name: Build & Test
       run: nix develop '.' -L --command './Test'
