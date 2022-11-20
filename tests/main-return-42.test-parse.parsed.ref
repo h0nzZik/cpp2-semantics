@@ -1,1 +1,5 @@
-main : ( .ParameterDeclarations ) -> int .Contracts = { return 42 ;  .Statements }  .Declarations
+<T>
+  <k>
+    main : ( .ParameterDeclarations ) -> int .Contracts = { return 42 ;  .Statements }  .Declarations ~> .
+  </k>
+</T>

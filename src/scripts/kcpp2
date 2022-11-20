@@ -36,7 +36,12 @@ run() {
 
 pretty_print() {
     local input_kore_file="$1"; shift
-    execute_command kore-print --definition "$kcpp2_parser_dir" "$input_kore_file" "${result_format[@]}"
+    local output_file="$1"; shift
+    args=( --definition "$kcpp2_parser_dir" "$input_kore_file" "${result_format[@]}")
+    if [ -n "$output_file" ]; then
+        args+=(--output-file "$output_file")
+    fi
+    execute_command kore-print "${args[@]}"
 }
 
 extract_parsed_translation_unit() {
@@ -72,9 +77,11 @@ disambiguate_only=false
 result_format=()
 disambiguate_depth=()
 input_file=
+output_file=
 while [[ $# -gt 0 ]]; do
     arg="$1"; shift
 	case "$arg" in
+        '--output-file')               output_file="$1"; shift; continue ;;
         '--result-format')             result_format=(--output "$1"); shift; continue ;;
 		'--stop-after-disambiguation') disambiguate_only=true;  continue ;;
 		'--disambiguation-depth')      disambiguate_depth=(--depth "$1"); shift
@@ -91,6 +98,9 @@ tmp_dir="${KCPP2_TMP:-$(mktemp -d)}"
 basename="${tmp_dir}/$(basename ${input_file})"
 parse "$input_file" "$basename".kore
 disambiguate "$basename".kore "$basename".disambiguated.kore
-! $disambiguate_only || { pretty_print "$basename".disambiguated.kore; exit ; }
+! $disambiguate_only || {
+    pretty_print "$basename".disambiguated.kore "$output_file" ;
+    exit ;
+}
 extract_parsed_translation_unit "$basename".disambiguated.kore "$basename".stripped.kore
 run "$basename".stripped.kore

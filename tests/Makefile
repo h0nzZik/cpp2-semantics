@@ -27,10 +27,10 @@ PARSE_TESTS_CMP := ${PARSE_TESTS:.cpp2=.cmp}
 parse-tests: ${PARSE_TESTS_CMP}
 
 ${PARSE_TESTS_OUT} : %.test-parse.parser.out : %.test-parse.cpp2
-	${KCPP2_COMMAND} --stop-after-disambiguation $< > $@
+	${KCPP2_COMMAND} --stop-after-disambiguation $< --output-file $@
 
 ${PARSE_TESTS_CMP} : %.test-parse.cmp : %.test-parse.parser.out %.test-parse.parsed.ref
-	${CHECK} $^ > $@ || cat $@
+	${CHECK} $^ > $@ || (cat $@; false)
 
 ############ Execution tests
 
