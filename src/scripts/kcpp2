@@ -9,35 +9,62 @@ kcpp2_semantics_dir="$kcpp2_install_prefix/lib/kcpp2/semantics/cpp2-kompiled"
 
 error() { echo "$@" ; exit 1; }
 
-execute_command() {
+verbose_echo() {
     ! "$verbose" || echo "$@";
+}
+
+execute_command() {
+    verbose_echo "$@"
     $@
 }
 
 parse() {
     local input_file="$1";
     local output_file="$2";
+    verbose_echo "Parsing '$input_file' into '$output_file'"
     execute_command kparse --definition "$kcpp2_parser_dir" --output-file "$output_file" "$input_file";
 }
 
 disambiguate() {
     local input_file="$1";
     local output_file="$2";
+    verbose_echo "Disambiguating '$input_file' into '$output_file'"
     local krun_args=(--definition "$kcpp2_parser_dir" --output kore --output-file "$output_file")
     krun_args+=( "${disambiguate_depth[@]}" )
     krun_args+=(--parser cat "$input_file")
     execute_command krun "${krun_args[@]}";
 }
 
-run() {
+run_phase() {
+    local phase="$1"; shift
     local input_file="$1"; shift
-    execute_command krun --definition "$kcpp2_semantics_dir" --parser cat "$input_file" ;
+    local output_file="$1"; shift
+    krun_args=(--definition "$kcpp2_semantics_dir" --parser cat "$input_file")
+    krun_args+=(--output kore --output-file "$output_file")
+    krun_args+=("-cPHASE=$phase")
+    execute_command krun "${krun_args[@]}";
+}
+
+run_translation() {
+    local input_file="$1"; shift
+    local output_file="$1"; shift
+    verbose_echo "Translating '$input_file' into '$output_file'"
+    run_phase "TranslationPhase()" "$input_file" "$output_file"
+}
+
+run_execution() {
+    local input_file="$1"; shift
+    local output_file="$1"; shift
+    verbose_echo "Executing '$input_file' into '$output_file'"
+    run_phase "ExecutionPhase()" "$input_file" "$output_file"
 }
 
 pretty_print() {
+    local semantics_dir="$1"; shift
     local input_kore_file="$1"; shift
     local output_file="$1"; shift
-    args=( --definition "$kcpp2_parser_dir" "$input_kore_file" "${result_format[@]}")
+    verbose_echo "Pretty printing '$input_kore_file' into '$output_file'"
+    args=( --definition "$semantics_dir" "$input_kore_file" "${result_format[@]}")
     if [ -n "$output_file" ]; then
         args+=(--output-file "$output_file")
     fi
@@ -65,7 +92,7 @@ extract_parsed_translation_unit() {
     # Now. remove the rest
     suffix3="),dotk{}())))"
     foo=${foo%"$suffix3"}
-    echo "inj{SortDeclarations{}, SortTranslationUnit{}}(${foo})" > "$output_file"
+    echo "inj{SortDeclarations{}, SortKItem{}}(${foo})" > "$output_file"
 }
 
 
@@ -74,6 +101,7 @@ extract_parsed_translation_unit() {
 
 verbose=false
 disambiguate_only=false
+translate_only=false
 result_format=()
 disambiguate_depth=()
 input_file=
@@ -84,6 +112,7 @@ while [[ $# -gt 0 ]]; do
         '--output-file')               output_file="$1"; shift; continue ;;
         '--result-format')             result_format=(--output "$1"); shift; continue ;;
 		'--stop-after-disambiguation') disambiguate_only=true;  continue ;;
+        '--stop-after-translation')    translate_only=true; continue ;;
 		'--disambiguation-depth')      disambiguate_depth=(--depth "$1"); shift
 		                               disambiguate_only=true # If disambiguation is not complete, then no point trying to run.
 		                               continue ;;
@@ -99,8 +128,14 @@ basename="${tmp_dir}/$(basename ${input_file})"
 parse "$input_file" "$basename".kore
 disambiguate "$basename".kore "$basename".disambiguated.kore
 ! $disambiguate_only || {
-    pretty_print "$basename".disambiguated.kore "$output_file" ;
+    pretty_print "$kcpp2_parser_dir" "$basename".disambiguated.kore "$output_file" ;
     exit ;
 }
 extract_parsed_translation_unit "$basename".disambiguated.kore "$basename".stripped.kore
-run "$basename".stripped.kore
+run_translation  "$basename".stripped.kore "$basename".translated.kore
+! $translate_only "$kcpp2_semantics_dir" || {
+    pretty_print "$kcpp2_semantics_dir" "$basename".translated.kore "$output_file" ;
+    exit ;
+}
+run_execution "$basename".translated.kore "$basename".executed.kore
+pretty_print "$kcpp2_semantics_dir" "$basename".executed.kore "$output_file" ;

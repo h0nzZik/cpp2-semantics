@@ -4,9 +4,10 @@
   inputs = {
     cppfront.url = "github:h0nzZik/cppfront/flake";
     kframework.url = "github:runtimeverification/k";
+    pyk.url = "github:runtimeverification/pyk";
   };
 
-  outputs = { self, nixpkgs, cppfront, kframework }:
+  outputs = { self, nixpkgs, cppfront, kframework, pyk }:
     let
         # to work with older version of flakes
       lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
@@ -36,7 +37,7 @@
 
           src = ./src;
 
-          buildInputs = [ kframework.packages.${prev.system}.k ];
+          buildInputs = [ kframework.packages.${prev.system}.k pyk.packages.${prev.system}.pyk ];
 
           installPhase = ''
             make PREFIX=$out install

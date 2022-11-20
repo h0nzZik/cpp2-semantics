@@ -11,12 +11,12 @@ CHECK := diff -U3
 
 default: all
 
-all: parse-tests
+all: parse-tests translate-tests
 
 clean:
 	rm -rf *.cmp *.out ${TEMP_DIR}
 
-.PHONY: all smoke-test clean parse-tests
+.PHONY: all smoke-test clean parse-tests translate-tests
 
 ########### Parse tests
 
@@ -31,6 +31,21 @@ ${PARSE_TESTS_OUT} : %.test-parse.parser.out : %.test-parse.cpp2
 
 ${PARSE_TESTS_CMP} : %.test-parse.cmp : %.test-parse.parser.out %.test-parse.parsed.ref
 	${CHECK} $^ > $@ || (cat $@; false)
+
+############ Translation tests
+
+TRANSLATE_TESTS := $(wildcard ./*.test-translate.cpp2)
+TRANSLATE_TESTS_OUT := ${TRANSLATE_TESTS:.cpp2=.translation.out}
+TRANSLATE_TESTS_CMP := ${TRANSLATE_TESTS:.cpp2=.cmp}
+
+translate-tests: ${TRANSLATE_TESTS_CMP}
+
+${TRANSLATE_TESTS_OUT} : %.test-translate.translation.out : %.test-translate.cpp2
+	${KCPP2_COMMAND} --stop-after-translation $< --output-file $@
+
+${TRANSLATE_TESTS_CMP} : %.test-translate.cmp : %.test-translate.translation.out %.test-translate.translation.ref
+	${CHECK} $^ > $@ || (cat $@; false)
+
 
 ############ Execution tests
 

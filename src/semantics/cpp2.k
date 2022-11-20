@@ -1,5 +1,9 @@
 requires "syntax.k"
 
+module CPP2-PHASE
+    syntax Phase ::= TranslationPhase() | ExecutionPhase()
+endmodule
+
 module ASTNODE
      imports CPP2-SYNTAX 
 
@@ -62,8 +66,8 @@ endmodule
 module CPP2
   imports DOMAINS
   imports ASTNODE
+  imports CPP2-PHASE
 
-  syntax Phase ::= TranslationPhase() | ExecutionPhase()
   syntax TranslateResult
   syntax ExecResult ::= Int | String | Bool
   syntax KResult ::= ExecResult
@@ -111,28 +115,54 @@ module CPP2
   syntax ExecResult ::= ValueC
 
   configuration <T>
-                  <phase> TranslationPhase() </phase>
-                  <k> translate($PGM:TranslationUnit) </k>
+                  <phase parser="PHASE, CPP2-PHASE"> $PHASE:Phase </phase>
+                  <k> initialize($PGM:KItem) </k>
                   <global-function-declarations> .Map </global-function-declarations>
                   <global-variable-declarations> .Map </global-variable-declarations>
-                  <translation-state>
-                    // We need these lists on order to perform deterministic traversal of the map
-                    <global-function-declarations-list> .List </global-function-declarations-list>
-                    <global-variable-declarations-list> .List </global-variable-declarations-list>
-                  </translation-state>
-                  <execution-state>
-                    <stack> .List </stack>
-                    <local>
-                      <blocks> .List </blocks>
-                      <returnVariables> .Map </returnVariables> // Identifier |-> ObjectIDC
-                    </local>
-                    <global-variables> .Map </global-variables> // Identifier |-> ObjectIDC
-                    <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
-                  </execution-state>
+                  // We need these lists on order to perform deterministic traversal of the map,
+                  // in translation time. But we do not need these to perform execution.
+                  // Therefore, the whole cell <translation-state> will get stripped in execution.
+                  <various-states>
+                    <translation-state multiplicity="?">
+                      <global-function-declarations-list> .List </global-function-declarations-list>
+                      <global-variable-declarations-list> .List </global-variable-declarations-list>
+                    </translation-state>
+                    <execution-state multiplicity="?">
+                      // This is probably the place to introduce <thread-local>.
+                      // But the K cell should stay outside <execution-state>,
+                      // because we want it also in translation.
+                      // Therefore, we will wrap it in <threads> (eventually).
+                      <stack> .List </stack>
+                      <local>
+                        <blocks> .List </blocks>
+                        <returnVariables> .Map </returnVariables> // Identifier |-> ObjectIDC
+                      </local>
+                      <global-variables> .Map </global-variables> // Identifier |-> ObjectIDC
+                      <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
+                    </execution-state>
+                  </various-states>
                   <exit-code exit=""> 139 </exit-code>
                 </T>
 
   //context alias [c]: <k> translate(HERE:K) ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
+
+  syntax KItem ::= initialize(KItem)
+
+  // Start the translation phase
+  rule <k> initialize(TU:TranslationUnit) => translate(TU) ...</k>
+       <phase> TranslationPhase() </phase>
+       <various-states> .Bag =>
+         <translation-state>
+           <global-function-declarations-list> .List </global-function-declarations-list>
+           <global-variable-declarations-list> .List </global-variable-declarations-list>
+         </translation-state>
+       </various-states>
+
+
+  // We have finished the translation phase
+  rule <k> translate(.Declarations) => .K </k>
+       <phase> TranslationPhase() </phase>
+       <exit-code> _ => 0 </exit-code>
 
   syntax Operation ::= translate(KItem)
 
@@ -228,10 +258,27 @@ module CPP2
 
   context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
 
-  syntax Operation ::= programStartup()
 
-  rule <k> translate(.Declarations) => programStartup() </k>
-       <phase> TranslationPhase() => ExecutionPhase() </phase>
+  // Start the execution phase
+  // The default X is `programStartup()`
+  rule <k> initialize(X:KItem) => X ...</k>
+       <phase> ExecutionPhase() </phase>
+       <various-states> .Bag =>
+         <execution-state>
+           <stack> .List </stack>
+           <local>
+             <blocks> .List </blocks>
+             <returnVariables> .Map </returnVariables> // Identifier |-> ObjectIDC
+           </local>
+           <global-variables> .Map </global-variables> // Identifier |-> ObjectIDC
+           <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
+         </execution-state>
+       </various-states>
+
+  //rule <k> translate(.Declarations) => programStartup() </k>
+  //     <phase> TranslationPhase() => ExecutionPhase() </phase>
+
+  syntax Operation ::= programStartup()
 
   rule programStartup()
      => instantiateGlobalVariables()
