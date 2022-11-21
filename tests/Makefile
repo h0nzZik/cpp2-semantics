@@ -49,7 +49,20 @@ ${TRANSLATE_TESTS_CMP} : %.test-translate.cmp : %.test-translate.translation.out
 
 ############ Execution tests
 
-smoke-test: main-return-42.test-parse
+EXECUTE_TESTS := $(wildcard ./*.test-execute.cpp2)
+EXECUTE_TESTS_OUT := ${EXECUTE_TESTS:.cpp2=.execution.out}
+EXECUTE_TESTS_CMP := ${EXECUTE_TESTS:.cpp2=.cmp}
+
+execute-tests: ${EXECUTE_TESTS_CMP}
+
+${EXECUTE_TESTS_OUT} : %.test-execute.execution.out : %.test-execute.cpp2
+	${KCPP2_COMMAND} $< --output-file $@
+
+${EXECUTE_TESTS_CMP} : %.test-execute.cmp : %.test-execute.execution.out %.test-execute.execution.ref
+	${CHECK} $^ > $@ || (cat $@; false)
+
+
+smoke-test: main-return-42.test-execute.cmp
 
 nested-calls: nested-calls.cpp2
 	${KCPP2_COMMAND} nested-calls.cpp2

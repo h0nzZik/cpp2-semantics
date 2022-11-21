@@ -116,7 +116,7 @@ module CPP2
 
   configuration <T>
                   <phase parser="PHASE, CPP2-PHASE"> $PHASE:Phase </phase>
-                  <k> initialize($PGM:K) </k>
+                  <k> initialize($PGM:KItem) </k>
                   <translation-result>
                     <global-function-declarations> .Map </global-function-declarations>
                     <global-variable-declarations> .Map </global-variable-declarations>
@@ -148,7 +148,7 @@ module CPP2
 
   //context alias [c]: <k> translate(HERE:K) ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
 
-  syntax KItem ::= initialize(K)
+  syntax KItem ::= initialize(KItem)
 
   // Start the translation phase
   rule <k> initialize(TU:TranslationUnit) => translate(TU) ...</k>
@@ -263,9 +263,9 @@ module CPP2
 
   context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
 
-
+  syntax KItem ::= translationResultWrapper(TranslationResultCell) [symbol, klabel(translationResultWrapper)]
   // Start the execution phase
-  rule <k> initialize(X:TranslationResultCell) => programStartup() ...</k>
+  rule <k> initialize(translationResultWrapper(X:TranslationResultCell)) => programStartup() ...</k>
        <phase> ExecutionPhase() </phase>
        (<translation-result> _TR </translation-result> => X)
        <various-states> .Bag =>

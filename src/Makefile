@@ -14,14 +14,14 @@ all: parser main glue
 parser: ${PARSER_TIMESTAMP}
 main: ${TIMESTAMP}
 
-glue: ${BUILD_ROOT}/bin/kcpp2 ${BUILD_ROOT}/bin/extract-translation-result.py
+glue: ${BUILD_ROOT}/bin/kcpp2 ${BUILD_ROOT}/libexec/kcpp2/extract-translation-result.py
 
 ${BUILD_ROOT}/bin/kcpp2: scripts/kcpp2
 	mkdir -p ${BUILD_ROOT}/bin
 	cp $< $@
 
-${BUILD_ROOT}/bin/extract-translation-result.py: scripts/extract-translation-result.py
-	mkdir -p ${BUILD_ROOT}/bin
+${BUILD_ROOT}/libexec/kcpp2/extract-translation-result.py: scripts/extract-translation-result.py
+	mkdir -p ${BUILD_ROOT}/libexec/kcpp2/
 	cp $< $@
 
 clean:
@@ -41,7 +41,8 @@ install: parser main scripts/kcpp2
 	mkdir -p ${PREFIX}
 	mkdir -p ${PREFIX}/bin
 	mkdir -p ${PREFIX}/lib/kcpp2
-	cp ${BUILD_ROOT}/bin/kcpp2 ${PREFIX}/bin
-	cp ${BUILD_ROOT}/bin/extract-translation-result.py ${PREFIX}/bin
+	mkdir -p ${PREFIX}/libexec/kcpp2
+	cp ${BUILD_ROOT}/bin/kcpp2 ${PREFIX}/bin/
+	cp ${BUILD_ROOT}/libexec/kcpp2/extract-translation-result.py ${PREFIX}/libexec/kcpp2/
 	rm -rf ${PREFIX}/lib/kcpp2
 	cp -R ${BUILD_ROOT}/lib/kcpp2 ${PREFIX}/lib/kcpp2

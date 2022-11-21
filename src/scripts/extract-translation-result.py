@@ -13,12 +13,14 @@ def main():
     args = parser.parse_args()
     parser = KoreParser.KoreParser(open(args.input_configuration, "r").read())
     cfg = parser.pattern()
+    #print(cfg)
     match cfg:
         case App("Lbl'-LT-'generatedTop'-GT-'", _,
                 (App("Lbl'-LT-'T'-GT-'", _,
                     (phaseCell, kCell, translationResultCell, statesCell, exitCodeCell)), counter)
         ):
-            open(args.output_file, "w").write(translationResultCell.text)
+            tresult = App(symbol="LbltranslationResultWrapper", sorts=(), patterns=[translationResultCell])
+            open(args.output_file, "w").write(tresult.text)
         case _:
             print("The configuration has an unexpected shape")
 

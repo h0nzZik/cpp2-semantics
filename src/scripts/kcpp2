@@ -6,6 +6,7 @@ kcpp2_script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && 
 kcpp2_install_prefix=$(realpath "$kcpp2_script_dir/..")
 kcpp2_parser_dir="$kcpp2_install_prefix/lib/kcpp2/parser/parsing-kompiled"
 kcpp2_semantics_dir="$kcpp2_install_prefix/lib/kcpp2/semantics/cpp2-kompiled"
+extract_translation_result="$kcpp2_install_prefix/libexec/kcpp2/extract-translation-result.py"
 
 error() { echo "$@" ; exit 1; }
 
@@ -137,5 +138,15 @@ run_translation  "$basename".stripped.kore "$basename".translated.kore
     pretty_print "$kcpp2_semantics_dir" "$basename".translated.kore "$output_file" ;
     exit ;
 }
-run_execution "$basename".translated.kore "$basename".executed.kore
+execute_command "$extract_translation_result" \
+  --input-configuration "$basename".translated.kore \
+  --output-file "$basename".translation-result.kore
+
+rm -f "$basename".executed.kore
+run_execution "$basename".translation-result.kore "$basename".executed.kore || {
+    verbose_echo "Execution failed."
+    if [ -f "$basename".executed.kore ]; then
+        pretty_print "$kcpp2_semantics_dir" "$basename".executed.kore "$output_file" ;
+    fi
+}
 pretty_print "$kcpp2_semantics_dir" "$basename".executed.kore "$output_file" ;
