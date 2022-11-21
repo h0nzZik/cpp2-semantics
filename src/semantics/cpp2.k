@@ -116,9 +116,11 @@ module CPP2
 
   configuration <T>
                   <phase parser="PHASE, CPP2-PHASE"> $PHASE:Phase </phase>
-                  <k> initialize($PGM:KItem) </k>
-                  <global-function-declarations> .Map </global-function-declarations>
-                  <global-variable-declarations> .Map </global-variable-declarations>
+                  <k> initialize($PGM:K) </k>
+                  <translation-result>
+                    <global-function-declarations> .Map </global-function-declarations>
+                    <global-variable-declarations> .Map </global-variable-declarations>
+                  </translation-result>
                   // We need these lists on order to perform deterministic traversal of the map,
                   // in translation time. But we do not need these to perform execution.
                   // Therefore, the whole cell <translation-state> will get stripped in execution.
@@ -146,7 +148,7 @@ module CPP2
 
   //context alias [c]: <k> translate(HERE:K) ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
 
-  syntax KItem ::= initialize(KItem)
+  syntax KItem ::= initialize(K)
 
   // Start the translation phase
   rule <k> initialize(TU:TranslationUnit) => translate(TU) ...</k>
@@ -163,6 +165,9 @@ module CPP2
   rule <k> translate(.Declarations) => .K </k>
        <phase> TranslationPhase() </phase>
        <exit-code> _ => 0 </exit-code>
+       <various-states> 
+         <translation-state> _Ignore </translation-state> => .Bag
+       </various-states>
 
   syntax Operation ::= translate(KItem)
 
@@ -260,9 +265,9 @@ module CPP2
 
 
   // Start the execution phase
-  // The default X is `programStartup()`
-  rule <k> initialize(X:KItem) => X ...</k>
+  rule <k> initialize(X:TranslationResultCell) => programStartup() ...</k>
        <phase> ExecutionPhase() </phase>
+       (<translation-result> _TR </translation-result> => X)
        <various-states> .Bag =>
          <execution-state>
            <stack> .List </stack>

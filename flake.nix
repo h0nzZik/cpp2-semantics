@@ -22,7 +22,13 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       # Nixpkgs instantiated for supported system types.
-      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; overlays = [ kframework.overlay self.overlay ]; });
+      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system;
+        overlays = [
+          kframework.overlay
+          pyk.overlay
+          self.overlay
+        ];
+      });
 
     in
 
@@ -37,7 +43,11 @@
 
           src = ./src;
 
-          buildInputs = [ kframework.packages.${prev.system}.k pyk.packages.${prev.system}.pyk ];
+          buildInputs = [ 
+            kframework.packages.${prev.system}.k 
+            # We want Python 3.10 because of the deep pattern matching feature
+            prev.pkgs.python310Packages.pyk
+          ];
 
           installPhase = ''
             make PREFIX=$out install

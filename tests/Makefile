@@ -41,7 +41,7 @@ TRANSLATE_TESTS_CMP := ${TRANSLATE_TESTS:.cpp2=.cmp}
 translate-tests: ${TRANSLATE_TESTS_CMP}
 
 ${TRANSLATE_TESTS_OUT} : %.test-translate.translation.out : %.test-translate.cpp2
-	${KCPP2_COMMAND} --stop-after-translation $< --output-file $@
+	${KCPP2_COMMAND} --stop-after-translation $< --result-format kore --output-file $@
 
 ${TRANSLATE_TESTS_CMP} : %.test-translate.cmp : %.test-translate.translation.out %.test-translate.translation.ref
 	${CHECK} $^ > $@ || (cat $@; false)
