@@ -1,0 +1,96 @@
+/* Fl Fn D Sfa Cl */
+Lbl'-LT-'generatedTop'-GT-'{}(
+    /* Fl Fn D Sfa Cl */
+    Lbl'-LT-'T'-GT-'{}(
+        /* Fl Fn D Sfa Cl */
+        Lbl'-LT-'phase'-GT-'{}(
+            /* Fl Fn D Sfa Cl */
+            LblTranslationPhase'LParRParUnds'CPP2-PHASE'Unds'Phase{}()
+        ),
+        /* Fl Fn D Sfa Cl */ Lbl'-LT-'k'-GT-'{}(/* Fl Fn D Sfa Cl */ dotk{}()),
+        /* Fl Fn D Sfa Cl */
+        Lbl'-LT-'translation-result'-GT-'{}(
+            /* Fl Fn D Sfa Cl */
+            Lbl'-LT-'global-function-declarations'-GT-'{}(
+                /* Fl Fn D Sfa Cl */
+                /* InternalMap: */ /* concrete element: */ Lbl'UndsPipe'-'-GT-Unds'{}(
+                    /* Inj: */ inj{SortId{}, SortKItem{}}(
+                        \dv{SortId{}}("main")
+                    ),
+                    /* Fl Fn D Sfa Cli */
+                    /* Inj: */ inj{SortRecord{}, SortKItem{}}(
+                        /* Fl Fn D Sfa Cl */
+                        LblglobalFunction'LParUndsCommUndsCommUndsRParUnds'CPP2'Unds'Record'Unds'Identifier'Unds'FunctionType'Unds'FunctionBody{}(
+                            /* Fl Fn D Sfa Cli */
+                            /* Inj: */ inj{SortId{}, SortIdentifier{}}(
+                                /* Fl Fn D Sfa Cl */
+                                \dv{SortId{}}(/* Fl Fn D Sfa Cl */ "main")
+                            ),
+                            /* Fl Fn D Sfa Cl */
+                            Lbl'UndsUndsUndsUnds'CPP2-SYNTAX'Unds'FunctionType'Unds'ParameterDeclarationList'Unds'ReturnList'Unds'Contracts{}(
+                                /* Fl Fn D Sfa Cl */
+                                Lbl'LParUndsRParUnds'CPP2-SYNTAX'Unds'ParameterDeclarationList'Unds'ParameterDeclarations{}(
+                                    /* Fl Fn D Sfa Cl */
+                                    Lbl'Stop'List'LBraQuotUndsCommUndsUnds'CPP2-SYNTAX'Unds'ParameterDeclarations'Unds'ParameterDeclaration'Unds'ParameterDeclarations'QuotRBraUnds'ParameterDeclarations{}()
+                                ),
+                                /* Fl Fn D Sfa Cl */
+                                Lbl-'-GT-UndsUnds'CPP2-SYNTAX'Unds'ReturnList'Unds'IdExpression{}(
+                                    /* Fl Fn D Sfa Cli */
+                                    /* Inj: */ inj{SortId{}, SortIdExpression{}}(
+                                        /* Fl Fn D Sfa Cl */
+                                        \dv{SortId{}}(/* Fl Fn D Sfa Cl */
+                                        "int")
+                                    )
+                                ),
+                                /* Fl Fn D Sfa Cl */
+                                Lbl'Stop'List'LBraQuotUndsUndsUnds'CPP2-SYNTAX'Unds'Contracts'Unds'Contract'Unds'Contracts'QuotRBraUnds'Contracts{}()
+                            ),
+                            /* Fl Fn D Sfa Cli */
+                            /* Inj: */ inj{SortFunctionBodyC{}, SortFunctionBody{}}(
+                                /* Fl Fn D Sfa Cl */
+                                LblfunctionBody'LParUndsRParUnds'CPP2'Unds'FunctionBodyC'Unds'Statement{}(
+                                    /* Fl Fn D Sfa Cli */
+                                    /* Inj: */ inj{SortCompoundStatement{}, SortStatement{}}(
+                                        /* Fl Fn D Sfa Cl */
+                                        Lbl'LBraUndsRBraUnds'CPP2-SYNTAX'Unds'CompoundStatement'Unds'Statements{}(
+                                            /* Fl Fn D Sfa Cl */
+                                            Lbl'UndsUndsUnds'CPP2-SYNTAX'Unds'Statements'Unds'Statement'Unds'Statements{}(
+                                                /* Fl Fn D Sfa Cli */
+                                                /* Inj: */ inj{SortReturnStatement{}, SortStatement{}}(
+                                                    /* Fl Fn D Sfa Cl */
+                                                    Lblreturn'UndsSClnUnds'CPP2-SYNTAX'Unds'ReturnStatement'Unds'Expression{}(
+                                                        /* Fl Fn D Sfa Cli */
+                                                        /* Inj: */ inj{SortInt{}, SortExpression{}}(
+                                                            /* Fl Fn D Sfa Cl */
+                                                            \dv{SortInt{}}("42")
+                                                        )
+                                                    )
+                                                ),
+                                                /* Fl Fn D Sfa Cl */
+                                                Lbl'Stop'List'LBraQuotUndsUndsUnds'CPP2-SYNTAX'Unds'Statements'Unds'Statement'Unds'Statements'QuotRBraUnds'Statements{}()
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            /* Fl Fn D Sfa Cl */
+            Lbl'-LT-'global-variable-declarations'-GT-'{}(
+                /* Fl Fn D Sfa Cl */ /* InternalMap: */ Lbl'Stop'Map{}()
+            )
+        ),
+        /* Fl Fn D Sfa Cl */
+        Lbl'-LT-'various-states'-GT-'{}(
+            /* Fl Fn D Sfa Cl */ Lbl'Stop'TranslationStateCell{}(),
+            /* Fl Fn D Sfa Cl */ Lbl'Stop'ExecutionStateCell{}()
+        ),
+        /* Fl Fn D Sfa Cl */
+        Lbl'-LT-'exit-code'-GT-'{}(/* Fl Fn D Sfa Cl */ \dv{SortInt{}}("0"))
+    ),
+    /* Fl Fn D Sfa Cl */
+    Lbl'-LT-'generatedCounter'-GT-'{}(/* Fl Fn D Sfa Cl */ \dv{SortInt{}}("0"))
+)
+

@@ -4,9 +4,10 @@
   inputs = {
     cppfront.url = "github:h0nzZik/cppfront/flake";
     kframework.url = "github:runtimeverification/k";
+    pyk.url = "github:runtimeverification/pyk";
   };
 
-  outputs = { self, nixpkgs, cppfront, kframework }:
+  outputs = { self, nixpkgs, cppfront, kframework, pyk }:
     let
         # to work with older version of flakes
       lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
@@ -21,7 +22,13 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       # Nixpkgs instantiated for supported system types.
-      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; overlays = [ kframework.overlay self.overlay ]; });
+      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system;
+        overlays = [
+          kframework.overlay
+          pyk.overlay
+          self.overlay
+        ];
+      });
 
     in
 
@@ -36,7 +43,11 @@
 
           src = ./src;
 
-          buildInputs = [ kframework.packages.${prev.system}.k ];
+          buildInputs = [ 
+            kframework.packages.${prev.system}.k 
+            # We want Python 3.10 because of the deep pattern matching feature
+            prev.pkgs.python310Packages.pyk
+          ];
 
           installPhase = ''
             make PREFIX=$out install

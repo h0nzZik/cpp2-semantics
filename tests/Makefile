@@ -11,12 +11,12 @@ CHECK := diff -U3
 
 default: all
 
-all: parse-tests
+all: smoke-test parse-tests translate-tests execute-tests
 
 clean:
 	rm -rf *.cmp *.out ${TEMP_DIR}
 
-.PHONY: all smoke-test clean parse-tests
+.PHONY: all smoke-test clean parse-tests translate-tests execute-tests
 
 ########### Parse tests
 
@@ -32,9 +32,41 @@ ${PARSE_TESTS_OUT} : %.test-parse.parser.out : %.test-parse.cpp2
 ${PARSE_TESTS_CMP} : %.test-parse.cmp : %.test-parse.parser.out %.test-parse.parsed.ref
 	${CHECK} $^ > $@ || (cat $@; false)
 
+############ Translation tests
+
+TRANSLATE_TESTS := $(wildcard ./*.test-translate.cpp2)
+TRANSLATE_TESTS_OUT := ${TRANSLATE_TESTS:.cpp2=.translation.out}
+TRANSLATE_TESTS_CMP := ${TRANSLATE_TESTS:.cpp2=.cmp}
+
+translate-tests: ${TRANSLATE_TESTS_CMP}
+
+${TRANSLATE_TESTS_OUT} : %.test-translate.translation.out : %.test-translate.cpp2
+	${KCPP2_COMMAND} --stop-after-translation $< --result-format kore --output-file $@
+
+${TRANSLATE_TESTS_CMP} : %.test-translate.cmp : %.test-translate.translation.out %.test-translate.translation.ref
+	${CHECK} $^ > $@ || (cat $@; false)
+
+
 ############ Execution tests
 
-smoke-test: main-return-42.test-parse
+EXECUTE_TESTS := $(wildcard ./*.test-execute.cpp2)
+EXECUTE_TESTS_OUT := ${EXECUTE_TESTS:.cpp2=.execution.out}
+EXECUTE_TESTS_CMP := ${EXECUTE_TESTS:.cpp2=.cmp}
+
+execute-tests: ${EXECUTE_TESTS_CMP}
+
+${EXECUTE_TESTS_OUT} : %.test-execute.execution.out : %.test-execute.cpp2
+	${KCPP2_COMMAND} $< --output-file $@
+
+${EXECUTE_TESTS_CMP} : %.test-execute.cmp : %.test-execute.execution.out %.test-execute.execution.ref
+	${CHECK} $^ > $@ || (cat $@; false)
+
+############# Other tests
+
+
+smoke-test: main-return-42.test-smoke.cpp2
+	${KCPP2_COMMAND} $< > /dev/null; test "$$?" -eq 42
+
 
 nested-calls: nested-calls.cpp2
 	${KCPP2_COMMAND} nested-calls.cpp2
