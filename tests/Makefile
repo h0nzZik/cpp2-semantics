@@ -11,12 +11,12 @@ CHECK := diff -U3
 
 default: all
 
-all: parse-tests translate-tests
+all: smoke-test parse-tests translate-tests execute-tests
 
 clean:
 	rm -rf *.cmp *.out ${TEMP_DIR}
 
-.PHONY: all smoke-test clean parse-tests translate-tests
+.PHONY: all smoke-test clean parse-tests translate-tests execute-tests
 
 ########### Parse tests
 
@@ -61,8 +61,12 @@ ${EXECUTE_TESTS_OUT} : %.test-execute.execution.out : %.test-execute.cpp2
 ${EXECUTE_TESTS_CMP} : %.test-execute.cmp : %.test-execute.execution.out %.test-execute.execution.ref
 	${CHECK} $^ > $@ || (cat $@; false)
 
+############# Other tests
 
-smoke-test: main-return-42.test-execute.cmp
+
+smoke-test: main-return-42.test-smoke.cpp2
+	${KCPP2_COMMAND} $< > /dev/null; test "$$?" -eq 42
+
 
 nested-calls: nested-calls.cpp2
 	${KCPP2_COMMAND} nested-calls.cpp2

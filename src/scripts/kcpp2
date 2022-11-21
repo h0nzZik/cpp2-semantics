@@ -144,9 +144,11 @@ execute_command "$extract_translation_result" \
 
 rm -f "$basename".executed.kore
 run_execution "$basename".translation-result.kore "$basename".executed.kore || {
-    verbose_echo "Execution failed."
+    retcode="$?"
+    verbose_echo "Execution failed with code '$retcode'."
     if [ -f "$basename".executed.kore ]; then
         pretty_print "$kcpp2_semantics_dir" "$basename".executed.kore "$output_file" ;
     fi
+    exit "$retcode"
 }
 pretty_print "$kcpp2_semantics_dir" "$basename".executed.kore "$output_file" ;
