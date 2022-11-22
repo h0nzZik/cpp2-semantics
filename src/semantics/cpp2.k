@@ -234,31 +234,25 @@ module CPP2
 
   rule lookupVariableOccurrences0(X:Int => node(X))
   
-  context lookupVariableOccurrences0(return HOLE:Expression => lookupVariableOccurrences0(HOLE) ; )
+  context lookupVariableOccurrences0(return (HOLE:Expression) => (lookupVariableOccurrences0(HOLE)) ; )
     [result(NodeC)]
   
   rule lookupVariableOccurrences0(return node(X) ; => node (return X ;))
   
-  context lookupVariableOccurrences0(((HOLE:Statement => lookupVariableOccurrences0(HOLE)):Statement _:Statements):Statements)
+  context lookupVariableOccurrences0((((HOLE:Statement) => (lookupVariableOccurrences0(HOLE))):Statement _:Statements):Statements)
     [result(NodeC)]
   
-  context lookupVariableOccurrences0((_:NodeC (HOLE:Statements => lookupVariableOccurrences0( HOLE ))):Statements)
+  context lookupVariableOccurrences0((_:NodeC ((HOLE:Statements) => (lookupVariableOccurrences0( HOLE )))):Statements)
     [result(NodeC)]
 
   rule lookupVariableOccurrences0((.Statements):Statements => (node(.Statements):Statements))
   
   rule lookupVariableOccurrences0((((node(X:Statement):Statement) (node(XS:Statements):Statements)):Statements) => (node((X XS):Statements):Statements))
 
-  // This generates weird rules, so we replace it with manual heat/cool rules
-  //context <k> lookupVariableOccurrences0(({ HOLE:Statements => lookupVariableOccurrences0(HOLE) }):CompoundStatement) ...</k>
-  //  [result(NodeC)]
-  syntax KItem ::= compoundStatementFreezer()
-  rule <k> lookupVariableOccurrences0(({ Xs:Statements }):CompoundStatement) => lookupVariableOccurrences0(Xs) ~> compoundStatementFreezer() ...</k>
-    requires notBool isNodeC(Xs)
-  rule <k> lookupVariableOccurrences0(Xs) ~> compoundStatementFreezer() => lookupVariableOccurrences0({ Xs }:CompoundStatement) ...</k>
-    requires isNodeC(Xs)
-
-  //rule lookupVariableOccurrences0(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
+  context <k> lookupVariableOccurrences0(({ (HOLE:Statements) => (lookupVariableOccurrences0(HOLE)) }):CompoundStatement) ...</k>
+    [result(NodeC)]
+  
+  rule lookupVariableOccurrences0(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
 
   //context elaborateFunctionBody()
 
