@@ -133,7 +133,14 @@ disambiguate "$basename".kore "$basename".disambiguated.kore
     exit ;
 }
 extract_parsed_translation_unit "$basename".disambiguated.kore "$basename".stripped.kore
-run_translation  "$basename".stripped.kore "$basename".translated.kore
+run_translation  "$basename".stripped.kore "$basename".translated.kore || {
+    retcode="$?"
+    verbose_echo "Translation failed with code '$retcode'"
+    if [ -f "$basename".translated.kore ]; then
+        pretty_print "$kcpp2_semantics_dir" "$basename".translated.kore "$output_file" ;
+    fi
+    exit "$retcode"
+}
 ! $translate_only "$kcpp2_semantics_dir" || {
     pretty_print "$kcpp2_semantics_dir" "$basename".translated.kore "$output_file" ;
     exit ;

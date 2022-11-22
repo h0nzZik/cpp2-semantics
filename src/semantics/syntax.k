@@ -211,10 +211,10 @@ module CPP2-SYNTAX
                         | ParameterDeclarationList          ReturnList Contracts               [seqstrict(c), hybrid(IllFormed, WellFormed)]
 
   syntax UnnamedDeclaration ::= ":" FunctionType "=" Statement                                 [seqstrict(c), hybrid(IllFormed, WellFormed)]
-                              | ":" IdExpression "=" Statement                                 [seqstrict(c), hybrid(IllFormed, WellFormed)]
-                              | ":"              "=" Statement                                 [seqstrict(c), hybrid(IllFormed, WellFormed)]
+                              | ":" IdExpression "=" Expression ";"                                 [seqstrict(c), hybrid(IllFormed, WellFormed)]
+                              | ":"              "=" Expression ";"                                [seqstrict(c), hybrid(IllFormed, WellFormed)]
                               | ":" IdExpression                                               [seqstrict(c), hybrid(IllFormed, WellFormed)]
-                              | ":" IdExpression ";"                                           [seqstrict(c), hybrid(IllFormed, WellFormed)]
+//                              | ":" IdExpression ";"                                           [seqstrict(c), hybrid(IllFormed, WellFormed)]
 
   syntax Declaration ::= Identifier UnnamedDeclaration                                         [seqstrict(c), hybrid(IllFormed, WellFormed)]
   syntax Declarations ::= List{Declaration,""}                                [seqstrict(c), hybrid(IllFormed, WellFormed)]
