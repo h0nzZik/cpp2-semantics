@@ -7,6 +7,8 @@ endmodule
 module ASTNODE
   imports CPP2-SYNTAX 
 
+  syntax PrimaryExpression ::= parentheses(Expressions) [seqstrict(c), symbol, klabel(parentheses)]
+
   syntax KItem
   // Represents an AST node
   syntax NodeC ::= node(KItem)

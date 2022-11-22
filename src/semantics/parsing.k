@@ -1,7 +1,13 @@
 requires "syntax.k"
 
-module PARSING
+module PARSING-SYNTAX
   imports CPP2-SYNTAX 
+
+  syntax PrimaryExpression ::= "(" Expressions ")" [seqstrict(c), hybrid(IllFormed, WellFormed), symbol, klabel(parentheses)]
+endmodule
+
+module PARSING
+  imports PARSING-SYNTAX
   imports BOOL
   imports STRING-SYNTAX
   imports K-AMBIGUITIES
