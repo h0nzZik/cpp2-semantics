@@ -44,7 +44,7 @@ run_phase() {
     local input_file="$1"; shift
     local output_file="$1"; shift
     local depth="$1"; shift
-
+    local krun_args=()
     krun_args+=(--definition "$kcpp2_semantics_dir" --parser cat)
     krun_args+=(--output kore --output-file "$output_file")
     krun_args+=("-cPHASE=$phase")
