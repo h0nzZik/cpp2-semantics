@@ -34,7 +34,8 @@ module CPP2-SYNTAX
   syntax PrimaryExpression ::= InspectExpression
                              | IdExpression
                              | Literal
-                             | "(" Expressions ")"                                                   [seqstrict(c), hybrid(IllFormed, WellFormed)]
+  // This was moved to parsing.k so that we do not accidentally refer to them
+  //                           | "(" Expressions ")"                                                   [seqstrict(c), hybrid(IllFormed, WellFormed)]
                              | UnnamedDeclaration
 
   syntax PostfixExpression ::= PrimaryExpression
