@@ -5,62 +5,68 @@ module CPP2-PHASE
 endmodule
 
 module ASTNODE
-     imports CPP2-SYNTAX 
+  imports CPP2-SYNTAX 
 
-     syntax NodeC
-     // Generalize the AST so that NodeC can be plugged anywhere in it
+  syntax KItem
+  // Represents an AST node
+  syntax NodeC ::= node(KItem)
+  syntax NodeF
+  syntax Node ::= NodeC | NodeF
+  syntax TranslateResult ::= NodeC
+  syntax NodeC
 
-  syntax PrimaryExpression ::= NodeC
-  syntax PostfixExpression ::= NodeC
-  syntax PrefixExpression ::= NodeC
-  syntax IsAsExpression ::= NodeC
-  syntax MultiplicativeExpression ::= NodeC 
-  syntax AdditiveExpression ::= NodeC
-  syntax ShiftExpression ::= NodeC
-  syntax CompareExpression ::= NodeC
-  syntax RelationalExpression ::= NodeC
-  syntax EqualityExpression ::= NodeC
-  syntax BitAndExpression ::= NodeC
-  syntax BitXorExpression ::= NodeC
-  syntax BitOrExpression ::= NodeC
-  syntax LogicalAndExpression ::= NodeC
-  syntax LogicalOrExpression ::= NodeC
-  syntax AssignmentExpression ::= NodeC
-  syntax Expression ::= NodeC
-  syntax Expressions ::= NodeC 
-  syntax TemplateArgument ::= NodeC
-  syntax TemplateArgumentList ::= NodeC
-  syntax TemplateId ::= NodeC
-  syntax UnqualifiedId ::= NodeC
-  syntax QualifiedId ::= NodeC
-  syntax MemberNameSpecifier ::= NodeC
-  syntax NestedNameSpecifier ::= NodeC
-  syntax IdExpression ::= NodeC
-  syntax ExpressionStatement ::= NodeC
-  syntax SelectionStatement ::= NodeC
-  syntax ReturnStatement ::= NodeC 
-  syntax IterationStatement ::= NodeC
-  syntax NextClause ::= NodeC
-  syntax IsTypeConstraint ::= NodeC
-  syntax AsTypeCast ::= NodeC
-  syntax AltName ::= NodeC
-  syntax Alternative ::= NodeC
-  syntax Alternatives ::= NodeC
-  syntax InspectExpression ::= NodeC
-  syntax Statement ::= NodeC
-  syntax Statements ::= NodeC
-  syntax CompoundStatement ::= NodeC
-  syntax ParameterDeclaration ::= NodeC
-  syntax ParameterDeclarations ::= NodeC
-  syntax ParameterDeclarationList ::= NodeC
-  syntax Contract ::= NodeC
-  syntax ReturnList ::= NodeC
-  syntax Contracts ::= NodeC
-  syntax FunctionType ::= NodeC
-  syntax UnnamedDeclaration ::= NodeC
-  syntax Declaration ::= NodeC
-  syntax Declarations ::= NodeC
-  syntax TranslationUnit ::= NodeC
+  // Generalize the AST so that NodeC can be plugged anywhere in it
+  syntax PrimaryExpression ::= Node
+  syntax PostfixExpression ::= Node
+  syntax PrefixExpression ::= Node
+  syntax IsAsExpression ::= Node
+  syntax MultiplicativeExpression ::= Node 
+  syntax AdditiveExpression ::= Node
+  syntax ShiftExpression ::= Node
+  syntax CompareExpression ::= Node
+  syntax RelationalExpression ::= Node
+  syntax EqualityExpression ::= Node
+  syntax BitAndExpression ::= Node
+  syntax BitXorExpression ::= Node
+  syntax BitOrExpression ::= Node
+  syntax LogicalAndExpression ::= Node
+  syntax LogicalOrExpression ::= Node
+  syntax AssignmentExpression ::= Node
+  syntax Expression ::= Node
+  syntax Expressions ::= Node 
+  syntax TemplateArgument ::= Node
+  syntax TemplateArgumentList ::= Node
+  syntax TemplateId ::= Node
+  syntax UnqualifiedId ::= Node
+  syntax QualifiedId ::= Node
+  syntax MemberNameSpecifier ::= Node
+  syntax NestedNameSpecifier ::= Node
+  syntax IdExpression ::= Node
+  syntax ExpressionStatement ::= Node
+  syntax SelectionStatement ::= Node
+  syntax ReturnStatement ::= NodeC
+  syntax IterationStatement ::= Node
+  syntax NextClause ::= Node
+  syntax IsTypeConstraint ::= Node
+  syntax AsTypeCast ::= Node
+  syntax AltName ::= Node
+  syntax Alternative ::= Node
+  syntax Alternatives ::= Node
+  syntax InspectExpression ::= Node
+  syntax Statement ::= Node
+  syntax Statements ::= Node
+  syntax CompoundStatement ::= Node
+  syntax ParameterDeclaration ::= Node
+  syntax ParameterDeclarations ::= Node
+  syntax ParameterDeclarationList ::= Node
+  syntax Contract ::= Node
+  syntax ReturnList ::= Node
+  syntax Contracts ::= Node
+  syntax FunctionType ::= Node
+  syntax UnnamedDeclaration ::= Node
+  syntax Declaration ::= Node
+  syntax Declarations ::= Node
+  syntax TranslationUnit ::= Node
 endmodule
 
 module CPP2
@@ -205,7 +211,6 @@ module CPP2
 
   // without the [symbol] annotation, `kompile` crashes when processing the context alias.
   syntax NodeF ::= lookupVariableOccurrences(KItem) 
-                 | lookupVariableOccurrences0(KItem) [symbol]
 
   context <k> elaborateFunctionBody(HOLE => lookupVariableOccurrences(HOLE)) ...</k> [result(NodeC)]
   rule elaborateFunctionBody(node(X:Statement)) => functionBody(X)
@@ -222,23 +227,36 @@ module CPP2
   rule <k> (lookupVariableOccurrences0(X:NodeC) ~> restoreLocalVariableNames(Names)) => lookupVariableOccurrences(X) ...</k>
        <local-variable-names> _ => Names </local-variable-names>
 
-  // Represents an AST node
-  syntax NodeC ::= node(KItem)
-  syntax NodeF
-  syntax Node ::= NodeC | NodeF
-  syntax TranslateResult ::= NodeC
 
-  context alias [c]:
-  <k> lookupVariableOccurrences0(HERE) ...</k>
-  <phase> TranslationPhase() </phase>
-  [context(lookupVariableOccurrences0), result(NodeC)]
-
+  syntax NodeF ::= lookupVariableOccurrences0(KItem) [symbol]
 
   rule lookupVariableOccurrences0(X:Int => node(X))
+  
+  context lookupVariableOccurrences0(return HOLE:Expression => lookupVariableOccurrences0(HOLE) ; )
+    [result(NodeC)]
+  
   rule lookupVariableOccurrences0(return node(X) ; => node (return X ;))
+  
+  context lookupVariableOccurrences0(((HOLE:Statement => lookupVariableOccurrences0(HOLE)):Statement _:Statements):Statements)
+    [result(NodeC)]
+  
+  context lookupVariableOccurrences0((_:NodeC (HOLE:Statements => lookupVariableOccurrences0( HOLE ))):Statements)
+    [result(NodeC)]
+
   rule lookupVariableOccurrences0((.Statements):Statements => (node(.Statements):Statements))
+  
   rule lookupVariableOccurrences0((((node(X:Statement):Statement) (node(XS:Statements):Statements)):Statements) => (node((X XS):Statements):Statements))
-  rule lookupVariableOccurrences0(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
+
+  // This generates weird rules, so we replace it with manual heat/cool rules
+  //context <k> lookupVariableOccurrences0(({ HOLE:Statements => lookupVariableOccurrences0(HOLE) }):CompoundStatement) ...</k>
+  //  [result(NodeC)]
+  syntax KItem ::= compoundStatementFreezer()
+  rule <k> lookupVariableOccurrences0(({ Xs:Statements }):CompoundStatement) => lookupVariableOccurrences0(Xs) ~> compoundStatementFreezer() ...</k>
+    requires notBool isNodeC(Xs)
+  rule <k> lookupVariableOccurrences0(Xs) ~> compoundStatementFreezer() => lookupVariableOccurrences0({ Xs }:CompoundStatement) ...</k>
+    requires isNodeC(Xs)
+
+  //rule lookupVariableOccurrences0(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
 
   //context elaborateFunctionBody()
 
