@@ -2,19 +2,25 @@
 set -ueo pipefail
 build_dir="$(pwd)/.build"
 
-log()   { $quiet || echo "$@" ; }
+log()   { echo "$@" ; }
 error() { echo "$@"; exit 1 ; }
 check() { diff -U3 "$@" ; }
 
+run_make() {
+    local make_flags=()
+    ! $quiet || make_flags+=(--quiet)
+    make "${make_flags[@]}" "$@"
+}
+
 build() {
     log "Building."
-    make -s -C src || error "Build failed."
+    run_make -C src || error "Build failed."
 }
 
 test() {
     PATH="${build_dir}/bin:$PATH"
     log "Running tests."
-    make -s -C tests
+    run_make -C tests
     log "Passed."
 }
 
@@ -25,11 +31,11 @@ maybe_enter_nix_shell() {
     exec nix "${nix_flags[@]}" develop . --command ./Test
 }
 
-quiet=false
+quiet=true
 while [[ $# -gt 0 ]]; do
     arg="$1"; shift
     case "$arg" in
-        -q) quiet=true
+        --verbose) quiet=false ;;
     esac
 done
 

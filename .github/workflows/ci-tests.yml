@@ -19,4 +19,4 @@ jobs:
       with:
         name: k-framework
     - name: Build & Test
-      run: './Test'
+      run: './Test --verbose'
