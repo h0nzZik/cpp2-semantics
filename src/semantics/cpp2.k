@@ -121,13 +121,15 @@ module CPP2
                     <global-function-declarations> .Map </global-function-declarations>
                     <global-variable-declarations> .Map </global-variable-declarations>
                   </translation-result>
-                  // We need these lists on order to perform deterministic traversal of the map,
-                  // in translation time. But we do not need these to perform execution.
-                  // Therefore, the whole cell <translation-state> will get stripped in execution.
                   <various-states>
                     <translation-state multiplicity="?">
+                      // We need these lists on order to perform deterministic traversal of the map,
+                      // in translation time. But we do not need these to perform execution.
+                      // Therefore, the whole cell <translation-state> will get stripped in execution.
                       <global-function-declarations-list> .List </global-function-declarations-list>
                       <global-variable-declarations-list> .List </global-variable-declarations-list>
+
+                      <local-variable-names> .Set </local-variable-names>
                     </translation-state>
                     <execution-state multiplicity="?">
                       // This is probably the place to introduce <thread-local>.
@@ -157,6 +159,7 @@ module CPP2
          <translation-state>
            <global-function-declarations-list> .List </global-function-declarations-list>
            <global-variable-declarations-list> .List </global-variable-declarations-list>
+           <local-variable-names> .Set </local-variable-names>
          </translation-state>
        </various-states>
 
@@ -201,11 +204,24 @@ module CPP2
   //rule elaborateFunctionBody(S) => functionBody(S)
 
   // without the [symbol] annotation, `kompile` crashes when processing the context alias.
-  syntax NodeF ::= lookupVariableOccurrences(KItem) [symbol]  
+  syntax NodeF ::= lookupVariableOccurrences(KItem) 
+                 | lookupVariableOccurrences0(KItem) [symbol]
 
   context <k> elaborateFunctionBody(HOLE => lookupVariableOccurrences(HOLE)) ...</k> [result(NodeC)]
   rule elaborateFunctionBody(node(X:Statement)) => functionBody(X)
- 
+
+  rule <k> lookupVariableOccurrences(X)
+        => lookupVariableOccurrences0(X)
+        ~> restoreLocalVariableNames(Names)
+        ...</k>
+       <local-variable-names> Names => .Set </local-variable-names>
+       requires notBool isNodeC(X)
+
+  syntax KItem ::= restoreLocalVariableNames(Set) [private]
+
+  rule <k> (lookupVariableOccurrences0(X:NodeC) ~> restoreLocalVariableNames(Names)) => lookupVariableOccurrences(X) ...</k>
+       <local-variable-names> _ => Names </local-variable-names>
+
   // Represents an AST node
   syntax NodeC ::= node(KItem)
   syntax NodeF
@@ -213,16 +229,16 @@ module CPP2
   syntax TranslateResult ::= NodeC
 
   context alias [c]:
-  <k> lookupVariableOccurrences(HERE) ...</k>
+  <k> lookupVariableOccurrences0(HERE) ...</k>
   <phase> TranslationPhase() </phase>
-  [context(lookupVariableOccurrences), result(NodeC)]
+  [context(lookupVariableOccurrences0), result(NodeC)]
 
 
-  rule lookupVariableOccurrences(X:Int => node(X))
-  rule lookupVariableOccurrences(return node(X) ; => node (return X ;))
-  rule lookupVariableOccurrences((.Statements):Statements => (node(.Statements):Statements))
-  rule lookupVariableOccurrences((((node(X:Statement):Statement) (node(XS:Statements):Statements)):Statements) => (node((X XS):Statements):Statements))
-  rule lookupVariableOccurrences(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
+  rule lookupVariableOccurrences0(X:Int => node(X))
+  rule lookupVariableOccurrences0(return node(X) ; => node (return X ;))
+  rule lookupVariableOccurrences0((.Statements):Statements => (node(.Statements):Statements))
+  rule lookupVariableOccurrences0((((node(X:Statement):Statement) (node(XS:Statements):Statements)):Statements) => (node((X XS):Statements):Statements))
+  rule lookupVariableOccurrences0(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
 
   //context elaborateFunctionBody()
 
