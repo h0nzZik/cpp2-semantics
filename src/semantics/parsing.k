@@ -84,11 +84,14 @@ module PARSING
   rule checkSemicolons(S:ReturnStatement) => S
   rule checkSemicolons(return E:Expression ;) => return E ;
 
-  rule checkSemicolons((: Id:IdExpression ;)::UnnamedDeclaration ) => (: Id ;)::UnnamedDeclaration
+  //rule checkSemicolons((: Id:IdExpression ;)::UnnamedDeclaration ) => (: Id ;)::UnnamedDeclaration
   rule checkSemicolons(: X:IdExpression) => #SemicolonError(: X)
   rule checkSemicolons(: T:FunctionType = Stmt ) => : T = checkSemicolons(Stmt)
-  rule checkSemicolons(: T:IdExpression = Stmt ) => : T = checkSemicolons(Stmt)
-  rule checkSemicolons(:                = Stmt ) => :   = checkSemicolons(Stmt)
+  //rule checkSemicolons(: T:IdExpression = Stmt ) => : T = checkSemicolons(Stmt)
+  rule checkSemicolons(: T:IdExpression = E:Expression ; ) => : T = E ;
+  //rule checkSemicolons(:                = Stmt ) => :   = checkSemicolons(Stmt)
+  
+  //rule checkSemicolons(:                = Stmt ) => :   = checkSemicolons(Stmt)
 
   rule checkSemicolons(X:Identifier Decl:UnnamedDeclaration) => (X checkSemicolons(Decl):UnnamedDeclaration):Declaration
 endmodule

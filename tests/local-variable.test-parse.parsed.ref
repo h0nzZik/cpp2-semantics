@@ -1,0 +1,5 @@
+<T>
+  <k>
+    main : ( .ParameterDeclarations ) -> int .Contracts = { y : int = 2 ;  .Statements }  .Declarations ~> .
+  </k>
+</T>
