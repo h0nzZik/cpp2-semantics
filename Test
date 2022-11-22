@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
-
-set -ue pipefail
-
+set -ueo pipefail
 build_dir="$(pwd)/.build"
+nix_flags=(--extra-experimental-features nix-command --extra-experimental-features flakes)
+
+# We require `nix` to install deps.
+[[ -z "${IN_NIX_SHELL-}" ]] && exec nix "${nix_flags[@]}" develop . --command ./Test
 
 error() { echo "$@"; exit 1 ; }
-
 check() { diff -U3 "$@" ; }
 
+echo "Building."
 make -s -C src || error "Build failed."
+
 PATH="${build_dir}/bin:$PATH"
-make -C tests
+echo "Running tests."
+make -s -C tests
 echo "Passed."
