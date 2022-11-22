@@ -8,14 +8,6 @@ error() { echo "$@"; exit 1 ; }
 
 check() { diff -U3 "$@" ; }
 
-test_disambiguate() {
-    local input_file="$1"; shift
-    local expected_file="${input_file}.parsed"
-    local output_file="${build_dir}/${input_file}.disamb"
-    kcpp2 --stop-after-disambiguation "${input_file}" > "${output_file}"
-    check "${output_file}" "${expected_file}"
-}
-
 make -s -C src || error "Build failed."
 PATH="${build_dir}/bin:$PATH"
 make -C tests
