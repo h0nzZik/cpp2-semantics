@@ -1,18 +1,38 @@
 #!/usr/bin/env bash
 set -ueo pipefail
 build_dir="$(pwd)/.build"
-nix_flags=(--extra-experimental-features nix-command --extra-experimental-features flakes)
 
-# We require `nix` to install deps.
-[[ -z "${IN_NIX_SHELL-}" ]] && exec nix "${nix_flags[@]}" develop . --command ./Test
-
+log()   { $quiet || echo "$@" ; }
 error() { echo "$@"; exit 1 ; }
 check() { diff -U3 "$@" ; }
 
-echo "Building."
-make -s -C src || error "Build failed."
+build() {
+    log "Building."
+    make -s -C src || error "Build failed."
+}
 
-PATH="${build_dir}/bin:$PATH"
-echo "Running tests."
-make -s -C tests
-echo "Passed."
+test() {
+    PATH="${build_dir}/bin:$PATH"
+    log "Running tests."
+    make -s -C tests
+    log "Passed."
+}
+
+maybe_enter_nix_shell() {
+    [[ -z "${IN_NIX_SHELL-}" ]] || return 0
+    nix_flags=(--extra-experimental-features nix-command --extra-experimental-features flakes)
+    $quiet || nix_flags+=(-L)
+    exec nix "${nix_flags[@]}" develop . --command ./Test
+}
+
+quiet=false
+while [[ $# -gt 0 ]]; do
+    arg="$1"; shift
+    case "$arg" in
+        -q) quiet=true
+    esac
+done
+
+maybe_enter_nix_shell
+build
+test
