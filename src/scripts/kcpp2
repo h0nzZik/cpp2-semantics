@@ -22,6 +22,7 @@ execute_command() {
 parse() {
     local input_file="$1";
     local output_file="$2";
+
     verbose_echo "Parsing '$input_file' into '$output_file'"
     execute_command kparse --definition "$kcpp2_parser_dir" --output-file "$output_file" "$input_file";
 }
@@ -29,9 +30,11 @@ parse() {
 disambiguate() {
     local input_file="$1";
     local output_file="$2";
+    local depth="$3";
+
     verbose_echo "Disambiguating '$input_file' into '$output_file'"
     local krun_args=(--definition "$kcpp2_parser_dir" --output kore --output-file "$output_file")
-    krun_args+=( "${disambiguate_depth[@]}" )
+    krun_args+=( --depth "$depth" )
     krun_args+=(--parser cat "$input_file")
     execute_command krun "${krun_args[@]}";
 }
@@ -40,24 +43,32 @@ run_phase() {
     local phase="$1"; shift
     local input_file="$1"; shift
     local output_file="$1"; shift
-    krun_args=(--definition "$kcpp2_semantics_dir" --parser cat "$input_file")
+    local depth="$1"; shift
+
+    krun_args+=(--definition "$kcpp2_semantics_dir" --parser cat)
     krun_args+=(--output kore --output-file "$output_file")
     krun_args+=("-cPHASE=$phase")
-    execute_command krun "${krun_args[@]}";
+    if [ "$depth" != "-1" ]; then
+        krun_args+=(--depth "$depth")
+    fi
+    krun_args+=("$input_file")
+    execute_command krun --no-exc-wrap "${krun_args[@]}" 2>/dev/null;
 }
 
 run_translation() {
     local input_file="$1"; shift
     local output_file="$1"; shift
+    local depth="$1"; shift
     verbose_echo "Translating '$input_file' into '$output_file'"
-    run_phase "TranslationPhase()" "$input_file" "$output_file"
+    run_phase "TranslationPhase()" "$input_file" "$output_file" "$depth"
 }
 
 run_execution() {
     local input_file="$1"; shift
     local output_file="$1"; shift
+    local depth="$1"; shift
     verbose_echo "Executing '$input_file' into '$output_file'"
-    run_phase "ExecutionPhase()" "$input_file" "$output_file"
+    run_phase "ExecutionPhase()" "$input_file" "$output_file" "$depth"
 }
 
 pretty_print() {
@@ -65,7 +76,7 @@ pretty_print() {
     local input_kore_file="$1"; shift
     local output_file="$1"; shift
     verbose_echo "Pretty printing '$input_kore_file' into '$output_file'"
-    args=( --definition "$semantics_dir" "$input_kore_file" "${result_format[@]}")
+    local args=( --definition "$semantics_dir" "$input_kore_file" "${result_format[@]}")
     if [ -n "$output_file" ]; then
         args+=(--output-file "$output_file")
     fi
@@ -101,10 +112,9 @@ extract_parsed_translation_unit() {
 # ====
 
 verbose=false
-disambiguate_only=false
-translate_only=false
 result_format=()
-disambiguate_depth=()
+upto="exec" # also: "transl" "disambig"
+depth="-1"
 input_file=
 output_file=
 while [[ $# -gt 0 ]]; do
@@ -112,11 +122,8 @@ while [[ $# -gt 0 ]]; do
 	case "$arg" in
         '--output-file')               output_file="$1"; shift; continue ;;
         '--result-format')             result_format=(--output "$1"); shift; continue ;;
-		'--stop-after-disambiguation') disambiguate_only=true;  continue ;;
-        '--stop-after-translation')    translate_only=true; continue ;;
-		'--disambiguation-depth')      disambiguate_depth=(--depth "$1"); shift
-		                               disambiguate_only=true # If disambiguation is not complete, then no point trying to run.
-		                               continue ;;
+        '--upto')                      upto="$1"; shift; continue ;;
+        '--depth')                     depth="$1"; shift; continue ;;
         '--verbose')                   verbose=true; continue ;;
         *)  [[ -z "$input_file" ]] || error "Too many arguments."
             input_file="$arg"; continue ;;
@@ -124,16 +131,29 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -n "$input_file" ]] || { error "Input file not specified." ; }
 
+
 tmp_dir="${KCPP2_TMP:-$(mktemp -d)}"
 basename="${tmp_dir}/$(basename ${input_file})"
+
+#### Parsing phase
 parse "$input_file" "$basename".kore
-disambiguate "$basename".kore "$basename".disambiguated.kore
-! $disambiguate_only || {
+phase_depth="-1"
+if [ "$upto" = "disambig" ]; then
+    phase_depth="$depth"
+fi
+disambiguate "$basename".kore "$basename".disambiguated.kore "$phase_depth"
+if [ "$upto" = "disambig" ]; then
     pretty_print "$kcpp2_parser_dir" "$basename".disambiguated.kore "$output_file" ;
     exit ;
-}
+fi
 extract_parsed_translation_unit "$basename".disambiguated.kore "$basename".stripped.kore
-run_translation  "$basename".stripped.kore "$basename".translated.kore || {
+
+#### Translation phase
+phase_depth="-1"
+if [ "$upto" = "transl" ]; then
+    phase_depth="$depth"
+fi
+run_translation "$basename".stripped.kore "$basename".translated.kore "$phase_depth" || {
     retcode="$?"
     verbose_echo "Translation failed with code '$retcode'"
     if [ -f "$basename".translated.kore ]; then
@@ -141,16 +161,19 @@ run_translation  "$basename".stripped.kore "$basename".translated.kore || {
     fi
     exit "$retcode"
 }
-! $translate_only "$kcpp2_semantics_dir" || {
+if [ "$upto" = "transl" ]; then
     pretty_print "$kcpp2_semantics_dir" "$basename".translated.kore "$output_file" ;
     exit ;
-}
+fi
+
+
+#### Execution phase
 execute_command "$extract_translation_result" \
   --input-configuration "$basename".translated.kore \
   --output-file "$basename".translation-result.kore
 
 rm -f "$basename".executed.kore
-run_execution "$basename".translation-result.kore "$basename".executed.kore || {
+run_execution "$basename".translation-result.kore "$basename".executed.kore "$depth" || {
     retcode="$?"
     verbose_echo "Execution failed with code '$retcode'."
     if [ -f "$basename".executed.kore ]; then
