@@ -1,184 +1,163 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 
-set -euo pipefail
+import json
+from argparse import ArgumentParser
+import tempfile
+import os.path
+import pathlib
+from sys import stdin
 
-kcpp2_script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-kcpp2_install_prefix=$(realpath "$kcpp2_script_dir/..")
-kcpp2_parser_dir="$kcpp2_install_prefix/lib/kcpp2/parser/parsing-kompiled"
-kcpp2_semantics_dir="$kcpp2_install_prefix/lib/kcpp2/semantics/cpp2-kompiled"
-extract_translation_result="$kcpp2_install_prefix/libexec/kcpp2/extract-translation-result.py"
-
-error() { echo "$@" ; exit 1; }
-
-verbose_echo() {
-    ! "$verbose" || echo "$@";
-}
-
-execute_command() {
-    verbose_echo "$@"
-    $@
-}
-
-parse() {
-    local input_file="$1";
-    local output_file="$2";
-
-    verbose_echo "Parsing '$input_file' into '$output_file'"
-    execute_command kparse --definition "$kcpp2_parser_dir" --output-file "$output_file" "$input_file";
-}
-
-disambiguate() {
-    local input_file="$1";
-    local output_file="$2";
-    local depth="$3";
-
-    verbose_echo "Disambiguating '$input_file' into '$output_file'"
-    local krun_args=(--definition "$kcpp2_parser_dir" --output kore --output-file "$output_file")
-    krun_args+=( --depth "$depth" )
-    krun_args+=(--parser cat "$input_file")
-    execute_command krun "${krun_args[@]}";
-}
-
-run_phase() {
-    local phase="$1"; shift
-    local input_file="$1"; shift
-    local output_file="$1"; shift
-    local depth="$1"; shift
-    local krun_args=()
-    krun_args+=(--definition "$kcpp2_semantics_dir" --parser cat)
-    krun_args+=(--output kore --output-file "$output_file")
-    krun_args+=("-cPHASE=$phase")
-    if [ "$depth" != "-1" ]; then
-        krun_args+=(--depth "$depth")
-    fi
-    krun_args+=("$input_file")
-    execute_command krun --no-exc-wrap "${krun_args[@]}" 2>/dev/null;
-}
-
-run_translation() {
-    local input_file="$1"; shift
-    local output_file="$1"; shift
-    local depth="$1"; shift
-    verbose_echo "Translating '$input_file' into '$output_file'"
-    run_phase "TranslationPhase()" "$input_file" "$output_file" "$depth"
-}
-
-run_execution() {
-    local input_file="$1"; shift
-    local output_file="$1"; shift
-    local depth="$1"; shift
-    verbose_echo "Executing '$input_file' into '$output_file'"
-    run_phase "ExecutionPhase()" "$input_file" "$output_file" "$depth"
-}
-
-pretty_print() {
-    local semantics_dir="$1"; shift
-    local input_kore_file="$1"; shift
-    local output_file="$1"; shift
-    verbose_echo "Pretty printing '$input_kore_file' into '$output_file'"
-    local args=( --definition "$semantics_dir" "$input_kore_file" "${result_format[@]}")
-    if [ -n "$output_file" ]; then
-        args+=(--output-file "$output_file")
-    fi
-    execute_command kore-print "${args[@]}"
-}
-
-extract_parsed_translation_unit() {
-    local input_file="$1";
-    local output_file="$2";
-
-    # TODO: Move this script to pyk?
-    prefix="Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'T'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(inj{SortDeclarations{}, SortKItem{}}("
-    string=$(cat "$input_file")
-    foo=${string#"$prefix"}
-    # Remove suffix of the shape suffix="),dotk{}()))),Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\"$SOMETHING\")))"
-    # where $SOMETHING is something.
-    # First, remove the last three closing parentheses and the closing '"'.
-    suffix1="\")))"
-    foo=${foo%"$suffix1"}
-    # Now, remove a number from the end.
-    foo=$(echo "$foo" | sed -E 's/(.*)([0-9]+)/\1/')
-    # Now, remove the generated counter.
-    suffix2=",Lbl'-LT-'generatedCounter'-GT-'{}(\dv{SortInt{}}(\""
-    foo=${foo%"$suffix2"}
-    # Now. remove the rest
-    suffix3="),dotk{}())))"
-    foo=${foo%"$suffix3"}
-    echo "inj{SortDeclarations{}, SortKItem{}}(${foo})" > "$output_file"
-}
+from pyk.kore.syntax import (App, SortApp)
+from pyk.kore import parser as KoreParser
+  
+class Kcpp2Error(Exception): ...
 
 
-# Main
-# ====
+def create_argument_parser() -> ArgumentParser:
+    parser = ArgumentParser(description='Extracts the result of translation from the final configuration.')
+    parser.add_argument('input_file', type=str, help='Path to the *.cpp2 file')
+    parser.add_argument('--output-file', type=str, help='Path to file where to write the resulting configuration')
+    parser.add_argument('--upto', choices=['disambiguate','translate','execute'], default='exec')
+    parser.add_argument('--depth', type=int, default=-1)
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('--temp-dir', type=str, help='A directory for storing temporary files', default=None)
+    parser.add_argument('--result-format', type=str, help="Format of the output", default="pretty")
+    return parser
 
-verbose=false
-result_format=()
-upto="exec" # also: "transl" "disambig"
-depth="-1"
-input_file=
-output_file=
-while [[ $# -gt 0 ]]; do
-    arg="$1"; shift
-	case "$arg" in
-        '--output-file')               output_file="$1"; shift; continue ;;
-        '--result-format')             result_format=(--output "$1"); shift; continue ;;
-        '--upto')                      upto="$1"; shift; continue ;;
-        '--depth')                     depth="$1"; shift; continue ;;
-        '--verbose')                   verbose=true; continue ;;
-        *)  [[ -z "$input_file" ]] || error "Too many arguments."
-            input_file="$arg"; continue ;;
-	esac
-done
-[[ -n "$input_file" ]] || { error "Input file not specified." ; }
+verbose = False
 
+kcpp2_script_dir = pathlib.Path( __file__ ).parent.absolute()
+kcpp2_install_prefix = os.path.realpath(os.path.join(kcpp2_script_dir, '..'))
+kcpp2_parser_dir = os.path.abspath(os.path.join(kcpp2_install_prefix, 'lib/kcpp2/parser/parsing-kompiled'))
+kcpp2_semantics_dir = os.path.abspath(os.path.join(kcpp2_install_prefix, 'lib/kcpp2/semantics/cpp2-kompiled'))
+# We will not need this, because we will perform the task in-script
+# extract_translation_result="$kcpp2_install_prefix/libexec/kcpp2/extract-translation-result.py"
 
-tmp_dir="${KCPP2_TMP:-$(mktemp -d)}"
-basename="${tmp_dir}/$(basename ${input_file})"
+def verbose_echo(text):
+    if verbose:
+        print(text)
 
-#### Parsing phase
-parse "$input_file" "$basename".kore
-phase_depth="-1"
-if [ "$upto" = "disambig" ]; then
-    phase_depth="$depth"
-fi
-disambiguate "$basename".kore "$basename".disambiguated.kore "$phase_depth"
-if [ "$upto" = "disambig" ]; then
-    pretty_print "$kcpp2_parser_dir" "$basename".disambiguated.kore "$output_file" ;
-    exit ;
-fi
-extract_parsed_translation_unit "$basename".disambiguated.kore "$basename".stripped.kore
+def execute_command(command) -> int :
+    verbose_echo(command)
+    return os.waitstatus_to_exitcode(os.system(command))
 
-#### Translation phase
-phase_depth="-1"
-if [ "$upto" = "transl" ]; then
-    phase_depth="$depth"
-fi
-run_translation "$basename".stripped.kore "$basename".translated.kore "$phase_depth" || {
-    retcode="$?"
-    verbose_echo "Translation failed with code '$retcode'"
-    if [ -f "$basename".translated.kore ]; then
-        pretty_print "$kcpp2_semantics_dir" "$basename".translated.kore "$output_file" ;
-    fi
-    exit "$retcode"
-}
-if [ "$upto" = "transl" ]; then
-    pretty_print "$kcpp2_semantics_dir" "$basename".translated.kore "$output_file" ;
-    exit ;
-fi
+def parse(input_file, output_file) -> int:
+    verbose_echo("Parsing '{}' into '{}'".format(input_file, output_file))
+    return execute_command("kparse --definition {} --output-file {} {}".format(kcpp2_parser_dir, output_file, input_file))
 
+def disambiguate(input_file, output_file, depth) -> int:
+    verbose_echo("Disambiguating '{}' into '{}' with depth {}".format(input_file, output_file, depth))
+    return execute_command("krun --definition {} --output kore --output-file {} --depth {} --parser cat {}".format(kcpp2_parser_dir, output_file, depth, input_file))
 
-#### Execution phase
-execute_command "$extract_translation_result" \
-  --input-configuration "$basename".translated.kore \
-  --output-file "$basename".translation-result.kore
+def run_phase(phase, input_file, output_file, depth) -> int:
+    depth_str = ""
+    if depth != -1:
+        depth_str = "--depth {}".format(depth)
+    return execute_command("krun --no-exc-wrap --definition {} --parser cat --output kore --output-file {} -cPHASE={} {} {} 2> /dev/null".format(
+        kcpp2_semantics_dir, output_file, phase, depth_str, input_file
+    ))
 
-rm -f "$basename".executed.kore
-run_execution "$basename".translation-result.kore "$basename".executed.kore "$depth" || {
-    retcode="$?"
-    verbose_echo "Execution failed with code '$retcode'."
-    if [ -f "$basename".executed.kore ]; then
-        pretty_print "$kcpp2_semantics_dir" "$basename".executed.kore "$output_file" ;
-    fi
-    exit "$retcode"
-}
-pretty_print "$kcpp2_semantics_dir" "$basename".executed.kore "$output_file" ;
+def run_translation(input_file, output_file, depth) -> int:
+    verbose_echo("Translating '{}' into '{}'".format(input_file, output_file))
+    return run_phase(phase="'TranslationPhase()'", input_file=input_file, output_file=output_file, depth=depth)
+
+def run_execution(input_file, output_file, depth) -> int:
+    verbose_echo("Executing '{}' into '{}'".format(input_file, output_file))
+    return run_phase(phase="'ExecutionPhase()'", input_file=input_file, output_file=output_file, depth=depth)
+
+def pretty_print(semantics_dir, input_kore_file, output_file, output_format="pretty"):
+    verbose_echo("Pretty printing '{}' into '{}'".format(input_kore_file, output_file))
+    output_file_str=""
+    if output_file != None and output_file != "":
+        output_file_str = "--output-file {}".format(output_file)
+    result = execute_command("kore-print {} --definition {} --output {} {}".format(input_kore_file, semantics_dir, output_format, output_file_str))
+    if result != 0:
+        raise Kcpp2Error
+
+def getParsingResult(cfg):
+    match cfg:
+        case App("Lbl'-LT-'generatedTop'-GT-'", _,
+                (App("Lbl'-LT-'T'-GT-'", _,
+                    (App("Lbl'-LT-'k'-GT-'", _, 
+                        (App("kseq", _, 
+                            (App("inj", _, (kContent,)),_)),)),)
+                    ), 
+                 counter
+                )
+        ):
+            result = App(symbol='inj', sorts=(SortApp(name='SortDeclarations', sorts=[]), SortApp(name='SortKItem', sorts=[])), patterns=[kContent])
+            #print(result)
+            return result
+        case _:
+            print("Not found")
+    exit(1)
+
+def extract_parsed_translation_unit(input_file, output_file):
+    parser = KoreParser.KoreParser(open(input_file, "r").read())
+    cfg = parser.pattern()
+    tr = getParsingResult(cfg)
+    with open(output_file, "w") as fw:
+        fw.write(tr.text)
+
+def getTranslationResult(cfg):
+    match cfg:
+        case App("Lbl'-LT-'generatedTop'-GT-'", _,
+                (App("Lbl'-LT-'T'-GT-'", _,
+                    (phaseCell, kCell, translationResultCell, statesCell, exitCodeCell)), counter)
+        ):
+            tresult = App(symbol="LbltranslationResultWrapper", sorts=(), patterns=[translationResultCell])
+            return tresult
+
+def extract_translation_result(input_file, output_file):
+    parser = KoreParser.KoreParser(open(input_file, "r").read())
+    cfg = parser.pattern()
+    tr = getTranslationResult(cfg)
+    with open(output_file, "w") as fw:
+        fw.write(tr.text)
+
+def depth_for_phase(args, phase):
+    if phase == args.upto:
+        return args.depth
+    return -1 # the default depth
+
+def main():
+    parser = create_argument_parser()
+    args = parser.parse_args()
+    global verbose
+    verbose = args.verbose
+    temp_dir = None
+    temp_dir_name = args.temp_dir
+    if temp_dir_name is None:
+        temp_dir = tempfile.TemporaryDirectory()
+        temp_dir_name = temp_dir.name
+    
+    # Parse & disambiguate
+    basename = os.path.join(temp_dir_name, os.path.basename(args.input_file))
+    parse(args.input_file, (basename + ".kore"))
+    result = disambiguate((basename + ".kore"), (basename + ".disambiguated.kore"), depth_for_phase(args, "disambiguate"))
+    if args.upto == "disambiguate" or result != 0:
+        if result != 0:
+            verbose_echo("Disambiguation failed with result: {}".format(result))
+        pretty_print(kcpp2_parser_dir, (basename + ".disambiguated.kore"), args.output_file, args.result_format)
+        exit(result)
+    
+    # Translate
+    extract_parsed_translation_unit((basename + ".disambiguated.kore"), (basename + ".stripped.kore"))
+    result = run_translation((basename + ".stripped.kore"), (basename + ".translated.kore"), depth_for_phase(args, "translate"))
+    if args.upto == "translate" or result != 0:
+        if result != 0:
+            verbose_echo("Translation failed with result: {}".format(result))
+        pretty_print(kcpp2_semantics_dir, (basename + ".translated.kore"), args.output_file, args.result_format)
+        exit(result)
+    
+    # Execution
+    extract_translation_result((basename + ".translated.kore"), (basename + ".translation-result.kore"))
+    result = run_execution((basename + ".translation-result.kore"), (basename + ".executed.kore"), args.depth)
+    pretty_print(kcpp2_semantics_dir, (basename + ".executed.kore"), args.output_file, args.result_format)
+    if result != 0:
+        verbose_echo("Execution failed with result: {}".format(result))
+        exit(result)
+    return
+
+if __name__ == "__main__":
+   main()
