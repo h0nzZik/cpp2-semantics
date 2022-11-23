@@ -6,7 +6,7 @@ $(shell mkdir -p ${TEMP_DIR})
 
 KCPP2 ?= kcpp2
 KCPP2FLAGS ?= --verbose
-KCPP2_COMMAND := env KCPP2_TMP=${TEMP_DIR}/ ${KCPP2} ${KCPP2FLAGS}
+KCPP2_COMMAND := ${KCPP2} --temp-dir ${TEMP_DIR} ${KCPP2FLAGS}
 CHECK := diff -U3
 
 default: all
@@ -14,51 +14,51 @@ default: all
 all: smoke-test parse-tests translate-tests execute-tests
 
 clean:
-	rm -rf *.cmp *.out ${TEMP_DIR}
+	rm -rf ${TEMP_DIR}
 
 .PHONY: all smoke-test clean parse-tests translate-tests execute-tests
 
 ########### Parse tests
 
 PARSE_TESTS := $(wildcard ./*.test-parse.cpp2)
-PARSE_TESTS_OUT := ${PARSE_TESTS:.cpp2=.parser.out}
-PARSE_TESTS_CMP := ${PARSE_TESTS:.cpp2=.cmp}
+PARSE_TESTS_OUT := $(addprefix ${TEMP_DIR}/, ${PARSE_TESTS:.cpp2=.parser.out})
+PARSE_TESTS_CMP := $(addprefix ${TEMP_DIR}/, ${PARSE_TESTS:.cpp2=.cmp})
 
 parse-tests: ${PARSE_TESTS_CMP}
 
-${PARSE_TESTS_OUT} : %.test-parse.parser.out : %.test-parse.cpp2
+${PARSE_TESTS_OUT} : ${TEMP_DIR}/%.test-parse.parser.out : %.test-parse.cpp2
 	${KCPP2_COMMAND} --upto disambiguate $< --output-file $@
 
-${PARSE_TESTS_CMP} : %.test-parse.cmp : %.test-parse.parser.out %.test-parse.parsed.ref
+${PARSE_TESTS_CMP} : ${TEMP_DIR}/%.test-parse.cmp : ${TEMP_DIR}/%.test-parse.parser.out %.test-parse.parsed.ref
 	${CHECK} $^ > $@ || (cat $@; false)
 
 ############ Translation tests
 
 TRANSLATE_TESTS := $(wildcard ./*.test-translate.cpp2)
-TRANSLATE_TESTS_OUT := ${TRANSLATE_TESTS:.cpp2=.translation.out}
-TRANSLATE_TESTS_CMP := ${TRANSLATE_TESTS:.cpp2=.cmp}
+TRANSLATE_TESTS_OUT := $(addprefix ${TEMP_DIR}/, ${TRANSLATE_TESTS:.cpp2=.translation.out})
+TRANSLATE_TESTS_CMP := $(addprefix ${TEMP_DIR}/, ${TRANSLATE_TESTS:.cpp2=.cmp})
 
 translate-tests: ${TRANSLATE_TESTS_CMP}
 
-${TRANSLATE_TESTS_OUT} : %.test-translate.translation.out : %.test-translate.cpp2
+${TRANSLATE_TESTS_OUT} : ${TEMP_DIR}/%.test-translate.translation.out : %.test-translate.cpp2
 	${KCPP2_COMMAND} --upto translate $< --result-format kore --output-file $@
 
-${TRANSLATE_TESTS_CMP} : %.test-translate.cmp : %.test-translate.translation.out %.test-translate.translation.ref
+${TRANSLATE_TESTS_CMP} : ${TEMP_DIR}/%.test-translate.cmp : ${TEMP_DIR}/%.test-translate.translation.out %.test-translate.translation.ref
 	${CHECK} $^ > $@ || (cat $@; false)
 
 
 ############ Execution tests
 
 EXECUTE_TESTS := $(wildcard ./*.test-execute.cpp2)
-EXECUTE_TESTS_OUT := ${EXECUTE_TESTS:.cpp2=.execution.out}
-EXECUTE_TESTS_CMP := ${EXECUTE_TESTS:.cpp2=.cmp}
+EXECUTE_TESTS_OUT := $(addprefix ${TEMP_DIR}/, ${EXECUTE_TESTS:.cpp2=.execution.out})
+EXECUTE_TESTS_CMP := $(addprefix ${TEMP_DIR}/, ${EXECUTE_TESTS:.cpp2=.cmp})
 
 execute-tests: ${EXECUTE_TESTS_CMP}
 
-${EXECUTE_TESTS_OUT} : %.test-execute.execution.out : %.test-execute.cpp2
+${EXECUTE_TESTS_OUT} : ${TEMP_DIR}/%.test-execute.execution.out : %.test-execute.cpp2
 	${KCPP2_COMMAND} $< --output-file $@
 
-${EXECUTE_TESTS_CMP} : %.test-execute.cmp : %.test-execute.execution.out %.test-execute.execution.ref
+${EXECUTE_TESTS_CMP} : ${TEMP_DIR}/%.test-execute.cmp : ${TEMP_DIR}/%.test-execute.execution.out %.test-execute.execution.ref
 	${CHECK} $^ > $@ || (cat $@; false)
 
 ############# Other tests
