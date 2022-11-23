@@ -7,7 +7,7 @@ import os.path
 import pathlib
 from sys import stdin
 
-from pyk.kore.syntax import (App, SortApp)
+from pyk.kore.syntax import (App, SortApp, DV, String)
 from pyk.kore import parser as KoreParser
   
 class Kcpp2Error(Exception): ...
@@ -22,6 +22,7 @@ def create_argument_parser() -> ArgumentParser:
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--temp-dir', type=str, help='A directory for storing temporary files', default=None)
     parser.add_argument('--result-format', type=str, help="Format of the output", default="pretty")
+    parser.add_argument('--prove', action='store_true')
     return parser
 
 verbose = False
@@ -74,6 +75,31 @@ def pretty_print(semantics_dir, input_kore_file, output_file, output_format="pre
     if result != 0:
         raise Kcpp2Error
 
+declarationsCons = "Lbl'UndsUndsUnds'CPP2-SYNTAX'Unds'Declarations'Unds'Declaration'Unds'Declarations"
+declarationsNil = "Lbl'Stop'List'LBraQuotUndsUndsUnds'CPP2-SYNTAX'Unds'Declarations'Unds'Declaration'Unds'Declarations'QuotRBraUnds'Declarations"
+
+def isMagic(cfg):
+    match cfg:
+        case App("inj", _, (App("LblmagicComment", _, _),)):
+            return True
+    return False
+
+def stripMagicComments(cfg):
+    # Maybe we should handle the case when there is only one declaration, and it is magic.
+    # if (isMagic(cfg)):
+    #    return App(declarationsNil, (), [])
+    match cfg:
+        case App(declarationsCons, sorts, (l, r)):
+            magic = isMagic(l)
+            r2 = stripMagicComments(r)
+            if magic:
+                return (r2[0], r2[1] + [l])
+            else:
+                return (App(declarationsCons, sorts, (l, r2[0])),r2[1])
+        case other:
+            return (other,[])
+
+
 def getParsingResult(cfg):
     match cfg:
         case App("Lbl'-LT-'generatedTop'-GT-'", _,
@@ -85,19 +111,25 @@ def getParsingResult(cfg):
                  counter
                 )
         ):
-            result = App(symbol='inj', sorts=(SortApp(name='SortDeclarations', sorts=[]), SortApp(name='SortKItem', sorts=[])), patterns=[kContent])
-            #print(result)
-            return result
+            stripped = stripMagicComments(kContent)
+            filtered = stripped[0]
+            #print("Comments only: {}".format(stripped[1]))
+            result = App(symbol='inj', sorts=(SortApp(name='SortDeclarations', sorts=[]), SortApp(name='SortKItem', sorts=[])), patterns=[filtered])
+            return (result,stripped[1])
         case _:
             print("Not found")
-    exit(1)
+            raise Kcpp2Error()
 
+
+# Returns extracted magic comments
 def extract_parsed_translation_unit(input_file, output_file):
     parser = KoreParser.KoreParser(open(input_file, "r").read())
     cfg = parser.pattern()
     tr = getParsingResult(cfg)
     with open(output_file, "w") as fw:
-        fw.write(tr.text)
+        fw.write(tr[0].text)
+    
+    return tr[1]
 
 def getTranslationResult(cfg):
     match cfg:
@@ -120,6 +152,17 @@ def depth_for_phase(args, phase):
         return args.depth
     return -1 # the default depth
 
+def cleanMagic(cfg):
+    match cfg:
+        case App("inj", _, (App("LblmagicComment", _, (start, App(claimType,_,_), claimId, DV(_, String(content)), end)),)):
+            return (claimType, content)
+    raise Kcpp2Error
+
+def write_spec_file(magic_comments, spec_file):
+    #print(magic_comments)
+    magic_comments_clean = list(map(cleanMagic, magic_comments))
+    print(magic_comments_clean)
+
 def main():
     parser = create_argument_parser()
     args = parser.parse_args()
@@ -133,7 +176,10 @@ def main():
     
     # Parse & disambiguate
     basename = os.path.join(temp_dir_name, os.path.basename(args.input_file))
-    parse(args.input_file, (basename + ".kore"))
+    result = parse(args.input_file, (basename + ".kore"))
+    if result != 0:
+        verbose_echo("Parsing failed")
+        exit(result)
     result = disambiguate((basename + ".kore"), (basename + ".disambiguated.kore"), depth_for_phase(args, "disambiguate"))
     if args.upto == "disambiguate" or result != 0:
         if result != 0:
@@ -142,7 +188,7 @@ def main():
         exit(result)
     
     # Translate
-    extract_parsed_translation_unit((basename + ".disambiguated.kore"), (basename + ".stripped.kore"))
+    magic_comments = extract_parsed_translation_unit((basename + ".disambiguated.kore"), (basename + ".stripped.kore"))
     result = run_translation((basename + ".stripped.kore"), (basename + ".translated.kore"), depth_for_phase(args, "translate"))
     if args.upto == "translate" or result != 0:
         if result != 0:
@@ -150,6 +196,11 @@ def main():
         pretty_print(kcpp2_semantics_dir, (basename + ".translated.kore"), args.output_file, args.result_format)
         exit(result)
     
+    if args.prove:
+        verbose_echo("Generating specification...")
+        write_spec_file(magic_comments, (basename + ".spec.k"))
+        return
+
     # Execution
     extract_translation_result((basename + ".translated.kore"), (basename + ".translation-result.kore"))
     result = run_execution((basename + ".translation-result.kore"), (basename + ".executed.kore"), args.depth)

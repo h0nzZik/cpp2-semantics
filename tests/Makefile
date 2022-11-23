@@ -61,6 +61,21 @@ ${EXECUTE_TESTS_OUT} : ${TEMP_DIR}/%.test-execute.execution.out : %.test-execute
 ${EXECUTE_TESTS_CMP} : ${TEMP_DIR}/%.test-execute.cmp : ${TEMP_DIR}/%.test-execute.execution.out %.test-execute.execution.ref
 	${CHECK} $^ > $@ || (cat $@; false)
 
+############ Prove tests
+
+PROVE_TESTS := $(wildcard ./*.test-prove.cpp2)
+PROVE_TESTS_OUT := $(addprefix ${TEMP_DIR}/, ${PROVE_TESTS:.cpp2=.prove.out})
+#PROVE_TESTS_CMP := $(addprefix ${TEMP_DIR}/, ${PROVE_TESTS:.cpp2=.cmp})
+
+prove-tests: ${PROVE_TESTS_OUT}
+
+${PROVE_TESTS_OUT} : ${TEMP_DIR}/%.test-prove.prove.out : %.test-prove.cpp2
+	${KCPP2_COMMAND} $< --prove --output-file $@
+
+#${EXECUTE_TESTS_CMP} : ${TEMP_DIR}/%.test-execute.cmp : ${TEMP_DIR}/%.test-execute.execution.out %.test-execute.execution.ref
+#	${CHECK} $^ > $@ || (cat $@; false)
+
+
 ############# Other tests
 
 
