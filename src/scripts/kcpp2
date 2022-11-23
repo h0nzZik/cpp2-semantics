@@ -20,7 +20,7 @@ def create_argument_parser() -> ArgumentParser:
     parser.add_argument('--upto', choices=['disambiguate','translate','execute'], default='exec')
     parser.add_argument('--depth', type=int, default=-1)
     parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument('--temp-dir', type=str, help='A directory for storing temporary files', default="")
+    parser.add_argument('--temp-dir', type=str, help='A directory for storing temporary files', default=None)
     parser.add_argument('--result-format', type=str, help="Format of the output", default="pretty")
     return parser
 
@@ -127,9 +127,9 @@ def main():
     verbose = args.verbose
     temp_dir = None
     temp_dir_name = args.temp_dir
-    if temp_dir == "":
+    if temp_dir_name is None:
         temp_dir = tempfile.TemporaryDirectory()
-        tenp_dir_name = temp_dir.name
+        temp_dir_name = temp_dir.name
     
     # Parse & disambiguate
     basename = os.path.join(temp_dir_name, os.path.basename(args.input_file))
