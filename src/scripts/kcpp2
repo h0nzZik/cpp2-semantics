@@ -21,6 +21,7 @@ def create_argument_parser() -> ArgumentParser:
     parser.add_argument('--depth', type=int, default=-1)
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--temp-dir', type=str, help='A directory for storing temporary files', default="")
+    parser.add_argument('--result-format', type=str, help="Format of the output", default="pretty")
     return parser
 
 verbose = False
@@ -135,27 +136,27 @@ def main():
     parse(args.input_file, (basename + ".kore"))
     result = disambiguate((basename + ".kore"), (basename + ".disambiguated.kore"), depth_for_phase(args, "disambiguate"))
     if args.upto == "disambiguate" or result != 0:
-        pretty_print(kcpp2_parser_dir, (basename + ".disambiguated.kore"), args.output_file)
-    if result != 0:
-        verbose_echo("Disambiguation failed with result: {}".format(result))
-        exit(1)
+        if result != 0:
+            verbose_echo("Disambiguation failed with result: {}".format(result))
+        pretty_print(kcpp2_parser_dir, (basename + ".disambiguated.kore"), args.output_file, args.result_format)
+        exit(result)
     
     # Translate
     extract_parsed_translation_unit((basename + ".disambiguated.kore"), (basename + ".stripped.kore"))
     result = run_translation((basename + ".stripped.kore"), (basename + ".translated.kore"), depth_for_phase(args, "translate"))
     if args.upto == "translate" or result != 0:
-        pretty_print(kcpp2_semantics_dir, (basename + ".translated.kore"), args.output_file)
-    if result != 0:
-        verbose_echo("Translation failed with result: {}".format(result))
-        exit(1)
+        if result != 0:
+            verbose_echo("Translation failed with result: {}".format(result))
+        pretty_print(kcpp2_semantics_dir, (basename + ".translated.kore"), args.output_file, args.result_format)
+        exit(result)
     
     # Execution
     extract_translation_result((basename + ".translated.kore"), (basename + ".translation-result.kore"))
     result = run_execution((basename + ".translation-result.kore"), (basename + ".executed.kore"), args.depth)
-    pretty_print(kcpp2_semantics_dir, (basename + ".executed.kore"), args.output_file)
+    pretty_print(kcpp2_semantics_dir, (basename + ".executed.kore"), args.output_file, args.result_format)
     if result != 0:
         verbose_echo("Execution failed with result: {}".format(result))
-        exit(1)
+        exit(result)
     return
 
 if __name__ == "__main__":

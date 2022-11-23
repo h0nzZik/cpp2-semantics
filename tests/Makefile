@@ -27,7 +27,7 @@ PARSE_TESTS_CMP := ${PARSE_TESTS:.cpp2=.cmp}
 parse-tests: ${PARSE_TESTS_CMP}
 
 ${PARSE_TESTS_OUT} : %.test-parse.parser.out : %.test-parse.cpp2
-	${KCPP2_COMMAND} --upto disambig $< --output-file $@
+	${KCPP2_COMMAND} --upto disambiguate $< --output-file $@
 
 ${PARSE_TESTS_CMP} : %.test-parse.cmp : %.test-parse.parser.out %.test-parse.parsed.ref
 	${CHECK} $^ > $@ || (cat $@; false)
@@ -41,7 +41,7 @@ TRANSLATE_TESTS_CMP := ${TRANSLATE_TESTS:.cpp2=.cmp}
 translate-tests: ${TRANSLATE_TESTS_CMP}
 
 ${TRANSLATE_TESTS_OUT} : %.test-translate.translation.out : %.test-translate.cpp2
-	${KCPP2_COMMAND} --upto transl $< --result-format kore --output-file $@
+	${KCPP2_COMMAND} --upto translate $< --result-format kore --output-file $@
 
 ${TRANSLATE_TESTS_CMP} : %.test-translate.cmp : %.test-translate.translation.out %.test-translate.translation.ref
 	${CHECK} $^ > $@ || (cat $@; false)
