@@ -38,7 +38,7 @@ def verbose_echo(text):
 
 def execute_command(command) -> int :
     verbose_echo(command)
-    return os.system(command)
+    return os.waitstatus_to_exitcode(os.system(command))
 
 def parse(input_file, output_file) -> int:
     verbose_echo("Parsing '{}' into '{}'".format(input_file, output_file))
@@ -52,7 +52,7 @@ def run_phase(phase, input_file, output_file, depth) -> int:
     depth_str = ""
     if depth != -1:
         depth_str = "--depth {}".format(depth)
-    return execute_command("krun --no-exc-wrap --definition {} --parser cat --output kore --output-file {} -cPHASE={} {} {} ".format(
+    return execute_command("krun --no-exc-wrap --definition {} --parser cat --output kore --output-file {} -cPHASE={} {} {} 2> /dev/null".format(
         kcpp2_semantics_dir, output_file, phase, depth_str, input_file
     ))
 
@@ -124,12 +124,14 @@ def main():
     args = parser.parse_args()
     global verbose
     verbose = args.verbose
-    temp_dir = args.temp_dir
+    temp_dir = None
+    temp_dir_name = args.temp_dir
     if temp_dir == "":
         temp_dir = tempfile.TemporaryDirectory()
+        tenp_dir_name = temp_dir.name
     
     # Parse & disambiguate
-    basename = os.path.join(temp_dir.name, os.path.basename(args.input_file))
+    basename = os.path.join(temp_dir_name, os.path.basename(args.input_file))
     parse(args.input_file, (basename + ".kore"))
     result = disambiguate((basename + ".kore"), (basename + ".disambiguated.kore"), depth_for_phase(args, "disambiguate"))
     if args.upto == "disambiguate" or result != 0:
