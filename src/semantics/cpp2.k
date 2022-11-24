@@ -391,7 +391,7 @@ module CPP2
 
   syntax Operation ::= returnValue(Value)
 
-  context <k> returnValue(HOLE) ...</k>
+  context [ctx-return-value]: <k> returnValue(HOLE) ...</k>
           <phase> ExecutionPhase() </phase> [result(ValueC)]
 
   rule [return-value]:
