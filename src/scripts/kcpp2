@@ -166,7 +166,7 @@ def generateClaim(magic_comment, translation_result_pretty : str) -> str:
     claim_id : str = magic_comment[1]
     orig_text : str = magic_comment[2]
     text = orig_text.removeprefix("```k").removesuffix("```")
-    return "claim [{}]: {}\n{}".format(claim_id, text, translation_result_pretty)
+    return "claim [{}]: {}\n{}\n<phase>ExecutionPhase()</phase>\n".format(claim_id, text, translation_result_pretty)
 
 def quoteIdentifiers(cfg : Kore):
     #print("quoting: {}".format(cfg))

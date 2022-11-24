@@ -315,9 +315,6 @@ module CPP2
          </execution-state>
        </various-states>
 
-  //rule <k> translate(.Declarations) => programStartup() </k>
-  //     <phase> TranslationPhase() => ExecutionPhase() </phase>
-
   syntax Operation ::= programStartup()
 
   rule programStartup()
@@ -370,7 +367,10 @@ module CPP2
   rule evaluateExpression(V:Int) => intValue(V)
   //rule evaluateExpression(V:Bool) => boolValue(V)
 
-  syntax Operation ::= returnValue(Value) [seqstrict(c)]
+  syntax Operation ::= returnValue(Value) //[seqstrict(c), result(ValueC)]
+
+  context returnValue(HOLE) [result(ValueC)]
+  
 
   rule [return-value]:
     returnValue(V:ValueC)
