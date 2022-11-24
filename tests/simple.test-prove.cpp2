@@ -4,7 +4,7 @@ foo: () -> int = {
 
 /*@ execution-claim [name]:
      ```k
-     <k> callFunction(String2Id("foo")) ~> readValue(unnamedReturnVariable()) => intValue(?_I:Int) ...</k>
+     <k> startExec() ~> callFunction(String2Id("foo")) ~> readValue(lookupObjectID(unnamedReturnVariable())) => intValue(?_I:Int) ...</k>
      ```
 @*/
 

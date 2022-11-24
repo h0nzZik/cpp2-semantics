@@ -29,7 +29,7 @@ ${PARSER_TIMESTAMP}: semantics/parsing.k semantics/syntax.k
 
 ${TIMESTAMP}: semantics/cpp2.k semantics/syntax.k
 	mkdir -p ${KOMPILED_DIR}
-	kompile --backend haskell --directory ${KOMPILED_DIR} $<
+	kompile --backend haskell --emit-json --directory ${KOMPILED_DIR} $<
 
 PREFIX ?= /usr
 

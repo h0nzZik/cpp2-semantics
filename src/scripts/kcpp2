@@ -5,10 +5,13 @@ from argparse import ArgumentParser
 import tempfile
 import os.path
 import pathlib
-from sys import stdin
+import sys
 
-from pyk.kore.syntax import (App, SortApp, DV, String)
+from pyk.kast.manip import (remove_source_map)
+from pyk.kast.outer import (read_kast_definition)
+from pyk.kore.syntax import (Kore, App, SortApp, DV, String)
 from pyk.kore import parser as KoreParser
+from pyk.ktool.kprint import (pretty_print_kast, KPrint, build_symbol_table)
   
 class Kcpp2Error(Exception): ...
 
@@ -31,8 +34,8 @@ kcpp2_script_dir = pathlib.Path( __file__ ).parent.absolute()
 kcpp2_install_prefix = os.path.realpath(os.path.join(kcpp2_script_dir, '..'))
 kcpp2_parser_dir = os.path.abspath(os.path.join(kcpp2_install_prefix, 'lib/kcpp2/parser/parsing-kompiled'))
 kcpp2_semantics_dir = os.path.abspath(os.path.join(kcpp2_install_prefix, 'lib/kcpp2/semantics/cpp2-kompiled'))
-# We will not need this, because we will perform the task in-script
-# extract_translation_result="$kcpp2_install_prefix/libexec/kcpp2/extract-translation-result.py"
+kcpp2_semantics_symbol_table = build_symbol_table(remove_source_map(read_kast_definition(os.path.join(kcpp2_semantics_dir, 'compiled.json'))))
+kcpp2_semantics_kprint = KPrint(kcpp2_semantics_dir)
 
 def verbose_echo(text):
     if verbose:
@@ -137,15 +140,16 @@ def getTranslationResult(cfg):
                 (App("Lbl'-LT-'T'-GT-'", _,
                     (phaseCell, kCell, translationResultCell, statesCell, exitCodeCell)), counter)
         ):
-            tresult = App(symbol="LbltranslationResultWrapper", sorts=(), patterns=[translationResultCell])
-            return tresult
+            return translationResultCell
 
 def extract_translation_result(input_file, output_file):
     parser = KoreParser.KoreParser(open(input_file, "r").read())
     cfg = parser.pattern()
-    tr = getTranslationResult(cfg)
+    translationResultCell = getTranslationResult(cfg)
+    tresult = App(symbol="LbltranslationResultWrapper", sorts=(), patterns=[translationResultCell])
     with open(output_file, "w") as fw:
-        fw.write(tr.text)
+        fw.write(tresult.text)
+    return translationResultCell
 
 def depth_for_phase(args, phase):
     if phase == args.upto:
@@ -154,16 +158,50 @@ def depth_for_phase(args, phase):
 
 def cleanMagic(cfg):
     match cfg:
-        case App("inj", _, (App("LblmagicComment", _, (start, App(claimType,_,_), claimId, DV(_, String(content)), end)),)):
-            return (claimType, content)
+        case App("inj", _, (App("LblmagicComment", _, (start, App(claimType,_,_), App("inj", _, (DV(_, String(claimId)),)), DV(_, String(content)), end)),)):
+            return (claimType, claimId, content)
     raise Kcpp2Error
 
-def write_spec_file(magic_comments, spec_file):
-    #print(magic_comments)
+def generateClaim(magic_comment, translation_result_pretty : str) -> str:
+    claim_id : str = magic_comment[1]
+    orig_text : str = magic_comment[2]
+    text = orig_text.removeprefix("```k").removesuffix("```")
+    return "claim [{}]: {}\n{}".format(claim_id, text, translation_result_pretty)
+
+def quoteIdentifiers(cfg : Kore):
+    #print("quoting: {}".format(cfg))
+    match cfg:
+        case App(_,_,_):
+            return cfg.map_pattern(quoteIdentifiers)
+        case DV(SortApp("SortId", ()), value):
+            return App("LblString2Id", (), [DV(SortApp("SortString", ()), value)])
+        case DV(_, _):
+            return cfg
+        case other:
+            print("unknown: {}".format(other))
+    return cfg
+
+def write_spec_file(magic_comments, translation_result, spec_file, module_name):
+    translation_result_2 = translation_result.map_pattern(quoteIdentifiers)
     magic_comments_clean = list(map(cleanMagic, magic_comments))
-    print(magic_comments_clean)
+    trkast = kcpp2_semantics_kprint.kore_to_kast(translation_result_2)
+    trpretty = pretty_print_kast(trkast, kcpp2_semantics_symbol_table)
+    claims = list(map(lambda x: generateClaim(x, trpretty), magic_comments_clean))
+    claims_str = "\n/******/\n".join(claims)
+    spec : str = "module {}\nimports CPP2\n{}\nendmodule\n".format(module_name, claims_str)
+    #print(spec)
+    with open(spec_file, "w") as fw:
+        fw.write(spec)
+
+def run_kprove(spec_file, module_name):
+    return execute_command("kprove --definition {} '{}'".format(kcpp2_semantics_dir, spec_file))
 
 def main():
+    # KAST terms can end up nested quite deeply, because of the various assoc operators (eg. _Map_, _Set_, ...).
+    # Most pyk operations are defined recursively, meaning you get a callstack the same depth as the term.
+    # This change makes it so that in most cases, by default, pyk doesn't run out of stack space.
+    sys.setrecursionlimit(10**7)
+
     parser = create_argument_parser()
     args = parser.parse_args()
     global verbose
@@ -175,7 +213,8 @@ def main():
         temp_dir_name = temp_dir.name
     
     # Parse & disambiguate
-    basename = os.path.join(temp_dir_name, os.path.basename(args.input_file))
+    input_file_basename = os.path.basename(args.input_file)
+    basename = os.path.join(temp_dir_name, input_file_basename)
     result = parse(args.input_file, (basename + ".kore"))
     if result != 0:
         verbose_echo("Parsing failed")
@@ -196,13 +235,18 @@ def main():
         pretty_print(kcpp2_semantics_dir, (basename + ".translated.kore"), args.output_file, args.result_format)
         exit(result)
     
+    translation_result = extract_translation_result((basename + ".translated.kore"), (basename + ".translation-result.kore"))
+
     if args.prove:
         verbose_echo("Generating specification...")
-        write_spec_file(magic_comments, (basename + ".spec.k"))
+        dashed_basename = input_file_basename.replace('.','-')
+        module_name = dashed_basename.upper() + "-SPEC"
+        spec_file_name = os.path.join(temp_dir_name, dashed_basename + "-spec.k")
+        write_spec_file(magic_comments, translation_result, spec_file_name, module_name)
+        run_kprove(spec_file_name, module_name)
         return
 
     # Execution
-    extract_translation_result((basename + ".translated.kore"), (basename + ".translation-result.kore"))
     result = run_execution((basename + ".translation-result.kore"), (basename + ".executed.kore"), args.depth)
     pretty_print(kcpp2_semantics_dir, (basename + ".executed.kore"), args.output_file, args.result_format)
     if result != 0:

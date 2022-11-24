@@ -295,10 +295,15 @@ module CPP2
 
   syntax KItem ::= translationResultWrapper(TranslationResultCell) [symbol, klabel(translationResultWrapper)]
   // Start the execution phase
-  rule <k> initialize(translationResultWrapper(X:TranslationResultCell)) => programStartup() ...</k>
+  rule <k> initialize(translationResultWrapper(X:TranslationResultCell)) => startExec() ~> programStartup() ...</k>
        <phase> ExecutionPhase() </phase>
        (<translation-result> _TR </translation-result> => X)
-       <various-states> .Bag =>
+
+  syntax KItem ::= startExec()
+
+  rule <k> startExec() => .K ...</k>
+       <phase> _ => ExecutionPhase() </phase>
+       <various-states> _ =>
          <execution-state>
            <stack> .List </stack>
            <local>
