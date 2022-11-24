@@ -65,15 +65,15 @@ ${EXECUTE_TESTS_CMP} : ${TEMP_DIR}/%.test-execute.cmp : ${TEMP_DIR}/%.test-execu
 
 PROVE_TESTS := $(wildcard ./*.test-prove.cpp2)
 PROVE_TESTS_OUT := $(addprefix ${TEMP_DIR}/, ${PROVE_TESTS:.cpp2=.prove.out})
-#PROVE_TESTS_CMP := $(addprefix ${TEMP_DIR}/, ${PROVE_TESTS:.cpp2=.cmp})
+PROVE_TESTS_CMP := $(addprefix ${TEMP_DIR}/, ${PROVE_TESTS:.cpp2=.cmp})
 
-prove-tests: ${PROVE_TESTS_OUT}
+prove-tests: ${PROVE_TESTS_CMP}
 
 ${PROVE_TESTS_OUT} : ${TEMP_DIR}/%.test-prove.prove.out : %.test-prove.cpp2
-	${KCPP2_COMMAND} $< --prove --output-file $@
+	${KCPP2_COMMAND} $< --prove --output-file $@ 
 
-#${EXECUTE_TESTS_CMP} : ${TEMP_DIR}/%.test-execute.cmp : ${TEMP_DIR}/%.test-execute.execution.out %.test-execute.execution.ref
-#	${CHECK} $^ > $@ || (cat $@; false)
+${PROVE_TESTS_CMP} : ${TEMP_DIR}/%.test-prove.cmp : ${TEMP_DIR}/%.test-prove.prove.out
+	echo '#Top' | ${CHECK} $< -
 
 
 ############# Other tests

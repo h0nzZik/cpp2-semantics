@@ -78,6 +78,9 @@ module CPP2
   // Modules for verification
   imports MAP-SYMBOLIC
   imports INT-SYMBOLIC
+  imports ML-SYNTAX
+
+  syntax Id ::= String2Idmacro (String) [macro,function, total, hook(STRING.string2token)]
 
   syntax TranslateResult
   syntax ExecResult ::= Int | String | Bool
@@ -154,6 +157,7 @@ module CPP2
                       </local>
                       <global-variables> .Map </global-variables> // Identifier |-> ObjectIDC
                       <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
+                      <objectid-counter> 0 </objectid-counter>
                     </execution-state>
                   </various-states>
                   <exit-code exit=""> 139 </exit-code>
@@ -323,6 +327,7 @@ module CPP2
            </local>
            <global-variables> .Map </global-variables> // Identifier |-> ObjectIDC
            <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
+           <objectid-counter> 0 </objectid-counter>
          </execution-state>
        </various-states>
 
@@ -351,11 +356,12 @@ module CPP2
   syntax BlockFrame ::= blockFrame()
 
   rule [call-function]:
-       <k> (callFunction(F:Identifier) ~> Rest:K) => writeValue(objectID(!I:Int), voidValue()) ~> S </k>
+       <k> (callFunction(F:Identifier) ~> Rest:K) => writeValue(objectID(I), voidValue()) ~> S </k>
        <global-function-declarations>... F |-> globalFunction(_, _T:FunctionType, functionBody(S:Statement)) ...</global-function-declarations>
        <stack>... (.List => ListItem(stackFrame(Rest, Blocks, RVs))) </stack>
        <blocks> Blocks:List => .List </blocks>
-       <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(!I:Int)) </returnVariables>
+       <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(I)) </returnVariables>
+       <objectid-counter> I:Int => I +Int 1 </objectid-counter>
 
   rule [compound-nonempty]: <k> ({ Stmts:Statements }):CompoundStatement => enterBlock() ~> Stmts ~> leaveBlock() ...</k> 
   //rule [compound-empty]: <k> ({ }):CompoundStatement => enterBlock() ~> leaveBlock() ...</k> 
@@ -365,8 +371,13 @@ module CPP2
   rule <k> enterBlock() => .K ...</k>
        <blocks>... (.List => ListItem(blockFrame())) </blocks>
        
-  rule <k> leaveBlock() => .K ...</k>
+  rule [leaveBlock-op]:
+       <k> leaveBlock() => .K ...</k>
        <blocks>... (ListItem(blockFrame()) => .List) </blocks>
+  
+  //rule [leaveBlock-noop]:
+  //     <k> leaveBlock() => .K ...</k>
+  //     <blocks> .List </blocks>
 
   syntax Identifier ::= unnamedReturnVariable()
 
@@ -405,10 +416,12 @@ module CPP2
        <k> (.K => leaveBlock()) ~> return ; ...</k>
        <blocks>... ListItem(_) </blocks>
 
+  // a return statement discards everything that was to be done later (_Rest),
+  // and instead of it retrieves a continuation from the stack
   rule [return-no-block]:
-       <k> return ; => readValue(objectID(I)) ~> Rest...</k>
+       <k> return ; ~> _Rest => readValue(objectID(I)) ~> Cont </k>
        <blocks> .List  => Blocks</blocks>
-       <stack>... (ListItem(stackFrame(Rest, Blocks, RVs)) => .List) </stack>
+       <stack>... (ListItem(stackFrame(Cont, Blocks, RVs)) => .List) </stack>
        <returnVariables> (unnamedReturnVariable() |-> objectID(I:Int)) => RVs </returnVariables>
 
   // A conditional / branching operation
@@ -431,4 +444,7 @@ module CPP2
   rule valueCategoryOf(_X:Identifier) => lvalue()
   rule valueCategoryOf(_) => rvalue()
 
+
+  // lemmas
+  rule {X:Int #Equals (X:Int +Int 1) } => #Bottom [simplification]
 endmodule
