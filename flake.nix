@@ -3,7 +3,7 @@
 
   inputs = {
     cppfront.url = "github:h0nzZik/cppfront/flake";
-    kframework.url = "github:h0nzZik/k/jtusil-context-label";
+    kframework.url = "github:runtimeverification/k";
     pyk.url = "github:runtimeverification/pyk";
   };
 
