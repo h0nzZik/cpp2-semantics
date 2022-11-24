@@ -75,6 +75,9 @@ module CPP2
   imports DOMAINS
   imports ASTNODE
   imports CPP2-PHASE
+  // Modules for verification
+  imports MAP-SYMBOLIC
+  imports INT-SYMBOLIC
 
   syntax TranslateResult
   syntax ExecResult ::= Int | String | Bool
@@ -277,13 +280,17 @@ module CPP2
 
   // Memory
   //------------------------------------------------------
-  syntax Operation ::= writeValue(ObjectID, Value) [seqstrict(c)]
+  syntax Operation ::= writeValue(ObjectID, Value) //[seqstrict(c)]
 
-  rule <k> writeValue(objectID(I), V) => .K ...</k>
+  context writeValue(HOLE, _) [result(ObjectIDC)]
+  context writeValue(_:ObjectIDC, HOLE) [result(ValueC)]
+
+  rule <k> writeValue(objectID(I), V:ValueC) => .K ...</k>
        <memory> M => M [ I <- V ] </memory>
 
-  rule <k> readValue(objectID(I)) => V ...</k>
-       <memory>... I |-> V ...</memory>
+  rule <k> readValue(objectID(I)) => M[I] ...</k>
+       <memory> M </memory>
+       requires I in_keys(M)
 
   // Names
   //-----------------------------------------------------
@@ -291,7 +298,11 @@ module CPP2
        <returnVariables>... (X |-> ID:ObjectIDC) ...</returnVariables>
 
 
-  context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
+  // we need to have some context alias
+  syntax KItem ::= neverMatches(K)
+  context alias [c]: <k> neverMatches(HERE) ...</k> <phase> ExecutionPhase() </phase>
+
+  //context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
 
   syntax KItem ::= translationResultWrapper(TranslationResultCell) [symbol, klabel(translationResultWrapper)]
   // Start the execution phase
@@ -362,20 +373,33 @@ module CPP2
   rule [return-exp]:
     return E:Expression ; => returnValue(evaluateExpression(E))
   
-  syntax ValueF ::= evaluateExpression(Expression) [seqstrict(c)]
-
+  syntax ValueF ::= evaluateExpression(Expression) //[seqstrict(c)]
+  
+  context evaluateExpression(HOLE) [result(ExecResult)]
+  
   rule evaluateExpression(V:Int) => intValue(V)
   //rule evaluateExpression(V:Bool) => boolValue(V)
 
-  syntax Operation ::= returnValue(Value) //[seqstrict(c), result(ValueC)]
 
-  context returnValue(HOLE) [result(ValueC)]
+  rule <k> Stmts:Statements => statementsToK(Stmts) ...</k>
+       <phase> ExecutionPhase() </phase>
   
+  syntax K ::= statementsToK(Statements) [function]  
+  rule statementsToK(.Statements) => .K
+  rule statementsToK((Stmt:Statement Stmts:Statements):Statements)
+       => Stmt ~> statementsToK(Stmts)
+
+  syntax Operation ::= returnValue(Value)
+
+  context <k> returnValue(HOLE) ...</k>
+          <phase> ExecutionPhase() </phase> [result(ValueC)]
 
   rule [return-value]:
-    returnValue(V:ValueC)
-    => writeValue(lookupObjectID(unnamedReturnVariable()), V)
-    ~> return ;
+    <k> returnValue(V:ValueC)
+      => writeValue(lookupObjectID(unnamedReturnVariable()), V)
+      ~> return ;
+    ...</k>
+    <phase> ExecutionPhase() </phase>
 
   rule [return-from-block]:
        <k> (.K => leaveBlock()) ~> return ; ...</k>
@@ -396,9 +420,11 @@ module CPP2
   // Are those two value categories enough for the simplified language?
   // Also, we query on value categories in translation time
   syntax ValueCategoryC ::= lvalue() | rvalue()
-  syntax ValueCategoryF ::= valueCategoryOf(Expression) [seqstrict(c)]
+  syntax ValueCategoryF ::= valueCategoryOf(Expression) //[seqstrict(c)]
   syntax ValueCategory ::= ValueCategoryC | ValueCategoryF
   syntax TranslateResult ::= ValueCategoryC
+
+  //context valueCategoryOf()
 
   // I think this is not true, because it depends on whether the identifier is an in/out parameter
   // See https://github.com/hsutter/708/blob/main/708.pdf

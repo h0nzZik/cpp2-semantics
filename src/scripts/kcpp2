@@ -193,8 +193,8 @@ def write_spec_file(magic_comments, translation_result, spec_file, module_name):
     with open(spec_file, "w") as fw:
         fw.write(spec)
 
-def run_kprove(spec_file, module_name):
-    return execute_command("kprove --definition {} '{}'".format(kcpp2_semantics_dir, spec_file))
+def run_kprove(spec_file, module_name, output_file):
+    return execute_command("kprove --definition {} --output kore --output-file '{}' '{}'".format(kcpp2_semantics_dir, output_file, spec_file))
 
 def main():
     # KAST terms can end up nested quite deeply, because of the various assoc operators (eg. _Map_, _Set_, ...).
@@ -243,7 +243,8 @@ def main():
         module_name = dashed_basename.upper() + "-SPEC"
         spec_file_name = os.path.join(temp_dir_name, dashed_basename + "-spec.k")
         write_spec_file(magic_comments, translation_result, spec_file_name, module_name)
-        run_kprove(spec_file_name, module_name)
+        run_kprove(spec_file_name, module_name, (basename + ".prove-result.kore"))
+        pretty_print(kcpp2_semantics_dir, (basename + ".prove-result.kore"), args.output_file, args.result_format)
         return
 
     # Execution

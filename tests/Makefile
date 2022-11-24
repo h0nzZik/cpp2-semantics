@@ -4,7 +4,7 @@ makeFileDir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 TEMP_DIR=${makeFileDir}/.tmp
 $(shell mkdir -p ${TEMP_DIR})
 
-KCPP2 ?= kcpp2
+KCPP2 ?= ../.build/bin/kcpp2
 KCPP2FLAGS ?= --verbose
 KCPP2_COMMAND := ${KCPP2} --temp-dir ${TEMP_DIR} ${KCPP2FLAGS}
 CHECK := diff -U3
