@@ -3,7 +3,24 @@ requires "syntax.k"
 module PARSING-SYNTAX
   imports CPP2-SYNTAX 
 
+  syntax #Layout ::= r"(\\/\\*[^@]([^\\*]|(\\*+([^\\*\\/])))*\\*+\\/)" [symbol, klabel(layout1)] // C-style multi-line comments, but not starting with  @
+                   | r"(\\/\\/[^\\n\\r]*)"                         [symbol, klabel(layout2)] // C-style single-line comments
+                   | r"([\\ \\n\\r\\t])"                           [symbol, klabel(layout3)] // Whitespace
+
+
+
   syntax PrimaryExpression ::= "(" Expressions ")" [seqstrict(c), hybrid(IllFormed, WellFormed), symbol, klabel(parentheses)]
+  
+  // This means that set variables cannot occur in the claim inside the comment
+  syntax QuotedString ::= r"(```k[^`]*```)" [token]
+  syntax MagicCommentStart ::= "/*@" [token]
+  syntax MagicCommentEnd ::= "@*/" [token]
+
+  syntax ClaimType ::= "execution-claim" | "translation-claim"
+  syntax MagicComment ::= MagicCommentStart ClaimType "[" Identifier "]" ":" QuotedString MagicCommentEnd [symbol, klabel(magicComment)]
+
+  syntax Declaration ::= MagicComment
+
 endmodule
 
 module PARSING
@@ -100,4 +117,8 @@ module PARSING
   //rule checkSemicolons(:                = Stmt ) => :   = checkSemicolons(Stmt)
 
   rule checkSemicolons(X:Identifier Decl:UnnamedDeclaration) => (X checkSemicolons(Decl):UnnamedDeclaration):Declaration
+
+  rule checkSemicolons(X:MagicComment) => X
+  rule isWellFormed(_X:MagicComment) => true
+
 endmodule

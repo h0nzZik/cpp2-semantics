@@ -4,7 +4,7 @@ makeFileDir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 TEMP_DIR=${makeFileDir}/.tmp
 $(shell mkdir -p ${TEMP_DIR})
 
-KCPP2 ?= kcpp2
+KCPP2 ?= ../.build/bin/kcpp2
 KCPP2FLAGS ?= --verbose
 KCPP2_COMMAND := ${KCPP2} --temp-dir ${TEMP_DIR} ${KCPP2FLAGS}
 CHECK := diff -U3
@@ -60,6 +60,21 @@ ${EXECUTE_TESTS_OUT} : ${TEMP_DIR}/%.test-execute.execution.out : %.test-execute
 
 ${EXECUTE_TESTS_CMP} : ${TEMP_DIR}/%.test-execute.cmp : ${TEMP_DIR}/%.test-execute.execution.out %.test-execute.execution.ref
 	${CHECK} $^ > $@ || (cat $@; false)
+
+############ Prove tests
+
+PROVE_TESTS := $(wildcard ./*.test-prove.cpp2)
+PROVE_TESTS_OUT := $(addprefix ${TEMP_DIR}/, ${PROVE_TESTS:.cpp2=.prove.out})
+PROVE_TESTS_CMP := $(addprefix ${TEMP_DIR}/, ${PROVE_TESTS:.cpp2=.cmp})
+
+prove-tests: ${PROVE_TESTS_CMP}
+
+${PROVE_TESTS_OUT} : ${TEMP_DIR}/%.test-prove.prove.out : %.test-prove.cpp2
+	${KCPP2_COMMAND} $< --prove --output-file $@ 
+
+${PROVE_TESTS_CMP} : ${TEMP_DIR}/%.test-prove.cmp : ${TEMP_DIR}/%.test-prove.prove.out
+	echo '#Top' | ${CHECK} $< -
+
 
 ############# Other tests
 

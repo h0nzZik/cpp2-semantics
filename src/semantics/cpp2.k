@@ -75,6 +75,12 @@ module CPP2
   imports DOMAINS
   imports ASTNODE
   imports CPP2-PHASE
+  // Modules for verification
+  imports MAP-SYMBOLIC
+  imports INT-SYMBOLIC
+  imports ML-SYNTAX
+
+  syntax Id ::= String2Idmacro (String) [macro,function, total, hook(STRING.string2token)]
 
   syntax TranslateResult
   syntax ExecResult ::= Int | String | Bool
@@ -151,6 +157,7 @@ module CPP2
                       </local>
                       <global-variables> .Map </global-variables> // Identifier |-> ObjectIDC
                       <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
+                      <objectid-counter> 0 </objectid-counter>
                     </execution-state>
                   </various-states>
                   <exit-code exit=""> 139 </exit-code>
@@ -277,13 +284,17 @@ module CPP2
 
   // Memory
   //------------------------------------------------------
-  syntax Operation ::= writeValue(ObjectID, Value) [seqstrict(c)]
+  syntax Operation ::= writeValue(ObjectID, Value) //[seqstrict(c)]
 
-  rule <k> writeValue(objectID(I), V) => .K ...</k>
+  context writeValue(HOLE, _) [result(ObjectIDC)]
+  context writeValue(_:ObjectIDC, HOLE) [result(ValueC)]
+
+  rule <k> writeValue(objectID(I), V:ValueC) => .K ...</k>
        <memory> M => M [ I <- V ] </memory>
 
-  rule <k> readValue(objectID(I)) => V ...</k>
-       <memory>... I |-> V ...</memory>
+  rule <k> readValue(objectID(I)) => M[I] ...</k>
+       <memory> M </memory>
+       requires I in_keys(M)
 
   // Names
   //-----------------------------------------------------
@@ -291,14 +302,23 @@ module CPP2
        <returnVariables>... (X |-> ID:ObjectIDC) ...</returnVariables>
 
 
-  context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
+  // we need to have some context alias
+  syntax KItem ::= neverMatches(K)
+  context alias [c]: <k> neverMatches(HERE) ...</k> <phase> ExecutionPhase() </phase>
+
+  //context alias [c]: <k> HERE:K ... </k> <phase> ExecutionPhase() </phase> [result(ExecResult)]
 
   syntax KItem ::= translationResultWrapper(TranslationResultCell) [symbol, klabel(translationResultWrapper)]
   // Start the execution phase
-  rule <k> initialize(translationResultWrapper(X:TranslationResultCell)) => programStartup() ...</k>
+  rule <k> initialize(translationResultWrapper(X:TranslationResultCell)) => startExec() ~> programStartup() ...</k>
        <phase> ExecutionPhase() </phase>
        (<translation-result> _TR </translation-result> => X)
-       <various-states> .Bag =>
+
+  syntax KItem ::= startExec()
+
+  rule <k> startExec() => .K ...</k>
+       <phase> _ => ExecutionPhase() </phase>
+       <various-states> _ =>
          <execution-state>
            <stack> .List </stack>
            <local>
@@ -307,11 +327,9 @@ module CPP2
            </local>
            <global-variables> .Map </global-variables> // Identifier |-> ObjectIDC
            <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
+           <objectid-counter> 0 </objectid-counter>
          </execution-state>
        </various-states>
-
-  //rule <k> translate(.Declarations) => programStartup() </k>
-  //     <phase> TranslationPhase() => ExecutionPhase() </phase>
 
   syntax Operation ::= programStartup()
 
@@ -338,11 +356,12 @@ module CPP2
   syntax BlockFrame ::= blockFrame()
 
   rule [call-function]:
-       <k> (callFunction(F:Identifier) ~> Rest:K) => writeValue(objectID(!I:Int), voidValue()) ~> S </k>
+       <k> (callFunction(F:Identifier) ~> Rest:K) => writeValue(objectID(I), voidValue()) ~> S </k>
        <global-function-declarations>... F |-> globalFunction(_, _T:FunctionType, functionBody(S:Statement)) ...</global-function-declarations>
        <stack>... (.List => ListItem(stackFrame(Rest, Blocks, RVs))) </stack>
        <blocks> Blocks:List => .List </blocks>
-       <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(!I:Int)) </returnVariables>
+       <returnVariables> RVs => (unnamedReturnVariable() |-> objectID(I)) </returnVariables>
+       <objectid-counter> I:Int => I +Int 1 </objectid-counter>
 
   rule [compound-nonempty]: <k> ({ Stmts:Statements }):CompoundStatement => enterBlock() ~> Stmts ~> leaveBlock() ...</k> 
   //rule [compound-empty]: <k> ({ }):CompoundStatement => enterBlock() ~> leaveBlock() ...</k> 
@@ -352,34 +371,57 @@ module CPP2
   rule <k> enterBlock() => .K ...</k>
        <blocks>... (.List => ListItem(blockFrame())) </blocks>
        
-  rule <k> leaveBlock() => .K ...</k>
+  rule [leaveBlock-op]:
+       <k> leaveBlock() => .K ...</k>
        <blocks>... (ListItem(blockFrame()) => .List) </blocks>
+  
+  //rule [leaveBlock-noop]:
+  //     <k> leaveBlock() => .K ...</k>
+  //     <blocks> .List </blocks>
 
   syntax Identifier ::= unnamedReturnVariable()
 
   rule [return-exp]:
     return E:Expression ; => returnValue(evaluateExpression(E))
   
-  syntax ValueF ::= evaluateExpression(Expression) [seqstrict(c)]
-
+  syntax ValueF ::= evaluateExpression(Expression) //[seqstrict(c)]
+  
+  context evaluateExpression(HOLE) [result(ExecResult)]
+  
   rule evaluateExpression(V:Int) => intValue(V)
   //rule evaluateExpression(V:Bool) => boolValue(V)
 
-  syntax Operation ::= returnValue(Value) [seqstrict(c)]
+
+  rule <k> Stmts:Statements => statementsToK(Stmts) ...</k>
+       <phase> ExecutionPhase() </phase>
+  
+  syntax K ::= statementsToK(Statements) [function]  
+  rule statementsToK(.Statements) => .K
+  rule statementsToK((Stmt:Statement Stmts:Statements):Statements)
+       => Stmt ~> statementsToK(Stmts)
+
+  syntax Operation ::= returnValue(Value)
+
+  context [ctx-return-value]: <k> returnValue(HOLE) ...</k>
+          <phase> ExecutionPhase() </phase> [result(ValueC)]
 
   rule [return-value]:
-    returnValue(V:ValueC)
-    => writeValue(lookupObjectID(unnamedReturnVariable()), V)
-    ~> return ;
+    <k> returnValue(V:ValueC)
+      => writeValue(lookupObjectID(unnamedReturnVariable()), V)
+      ~> return ;
+    ...</k>
+    <phase> ExecutionPhase() </phase>
 
   rule [return-from-block]:
        <k> (.K => leaveBlock()) ~> return ; ...</k>
        <blocks>... ListItem(_) </blocks>
 
+  // a return statement discards everything that was to be done later (_Rest),
+  // and instead of it retrieves a continuation from the stack
   rule [return-no-block]:
-       <k> return ; => readValue(objectID(I)) ~> Rest...</k>
+       <k> return ; ~> _Rest => readValue(objectID(I)) ~> Cont </k>
        <blocks> .List  => Blocks</blocks>
-       <stack>... (ListItem(stackFrame(Rest, Blocks, RVs)) => .List) </stack>
+       <stack>... (ListItem(stackFrame(Cont, Blocks, RVs)) => .List) </stack>
        <returnVariables> (unnamedReturnVariable() |-> objectID(I:Int)) => RVs </returnVariables>
 
   // A conditional / branching operation
@@ -391,13 +433,18 @@ module CPP2
   // Are those two value categories enough for the simplified language?
   // Also, we query on value categories in translation time
   syntax ValueCategoryC ::= lvalue() | rvalue()
-  syntax ValueCategoryF ::= valueCategoryOf(Expression) [seqstrict(c)]
+  syntax ValueCategoryF ::= valueCategoryOf(Expression) //[seqstrict(c)]
   syntax ValueCategory ::= ValueCategoryC | ValueCategoryF
   syntax TranslateResult ::= ValueCategoryC
+
+  //context valueCategoryOf()
 
   // I think this is not true, because it depends on whether the identifier is an in/out parameter
   // See https://github.com/hsutter/708/blob/main/708.pdf
   rule valueCategoryOf(_X:Identifier) => lvalue()
   rule valueCategoryOf(_) => rvalue()
 
+
+  // lemmas
+  //rule {X:Int #Equals (X:Int +Int 1) } => #Bottom [simplification]
 endmodule

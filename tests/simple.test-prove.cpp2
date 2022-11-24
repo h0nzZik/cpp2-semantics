@@ -1,0 +1,14 @@
+foo: () -> int = {
+    return 3;
+}
+
+/*@ execution-claim [name]:
+     ```k
+     <k> callFunction(String2Id("foo")) => intValue(?_I:Int) </k>
+     <execution-state> _ => ?_ </execution-state>
+     ```
+@*/
+
+bar: () -> int = {
+    return 3;
+}
