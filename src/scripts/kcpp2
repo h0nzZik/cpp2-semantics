@@ -26,6 +26,7 @@ def create_argument_parser() -> ArgumentParser:
     parser.add_argument('--temp-dir', type=str, help='A directory for storing temporary files', default=None)
     parser.add_argument('--result-format', type=str, help="Format of the output", default="pretty")
     parser.add_argument('--prove', action='store_true')
+    parser.add_argument('--kprove-args', type=str, default="")
     return parser
 
 verbose = False
@@ -193,8 +194,8 @@ def write_spec_file(magic_comments, translation_result, spec_file, module_name):
     with open(spec_file, "w") as fw:
         fw.write(spec)
 
-def run_kprove(spec_file, module_name, output_file):
-    return execute_command("kprove --definition {} --output kore --output-file '{}' '{}'".format(kcpp2_semantics_dir, output_file, spec_file))
+def run_kprove(spec_file, module_name, output_file, kprove_args):
+    return execute_command("kprove --definition {} --output kore --output-file '{}' {} '{}'".format(kcpp2_semantics_dir, output_file, kprove_args, spec_file))
 
 def main():
     # KAST terms can end up nested quite deeply, because of the various assoc operators (eg. _Map_, _Set_, ...).
@@ -243,7 +244,7 @@ def main():
         module_name = dashed_basename.upper() + "-SPEC"
         spec_file_name = os.path.join(temp_dir_name, dashed_basename + "-spec.k")
         write_spec_file(magic_comments, translation_result, spec_file_name, module_name)
-        run_kprove(spec_file_name, module_name, (basename + ".prove-result.kore"))
+        run_kprove(spec_file_name, module_name, (basename + ".prove-result.kore"), args.kprove_args)
         pretty_print(kcpp2_semantics_dir, (basename + ".prove-result.kore"), args.output_file, args.result_format)
         return
 
