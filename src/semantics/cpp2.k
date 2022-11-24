@@ -446,5 +446,5 @@ module CPP2
 
 
   // lemmas
-  rule {X:Int #Equals (X:Int +Int 1) } => #Bottom [simplification]
+  //rule {X:Int #Equals (X:Int +Int 1) } => #Bottom [simplification]
 endmodule
