@@ -71,16 +71,61 @@ module ASTNODE
   syntax TranslationUnit ::= Node
 endmodule
 
+module CPP2-CONFIGURATION
+  imports DOMAINS
+  imports ASTNODE
+  imports CPP2-PHASE
+
+  syntax KItem ::= initialize(KItem)
+
+  configuration <T>
+                  <phase parser="PHASE, CPP2-PHASE"> $PHASE:Phase </phase>
+                  <k> initialize($PGM:KItem) </k>
+                  <translation-result>
+                    <global-function-declarations> .Map </global-function-declarations>
+                    <global-variable-declarations> .Map </global-variable-declarations>
+                  </translation-result>
+                  <various-states>
+                    <translation-state multiplicity="?">
+                      // We need these lists on order to perform deterministic traversal of the map,
+                      // in translation time. But we do not need these to perform execution.
+                      // Therefore, the whole cell <translation-state> will get stripped in execution.
+                      <global-function-declarations-list> .List </global-function-declarations-list>
+                      <global-variable-declarations-list> .List </global-variable-declarations-list>
+
+                      <local-variable-names> .Set </local-variable-names>
+                    </translation-state>
+                    <execution-state multiplicity="?">
+                      // This is probably the place to introduce <thread-local>.
+                      // But the K cell should stay outside <execution-state>,
+                      // because we want it also in translation.
+                      // Therefore, we will wrap it in <threads> (eventually).
+                      <stack> .List </stack>
+                      <local>
+                        <blocks> .List </blocks>
+                        <returnVariables> .Map </returnVariables> // Identifier |-> ObjectIDC
+                      </local>
+                      <global-variables> .Map </global-variables> // Identifier |-> ObjectIDC
+                      <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
+                      <objectid-counter> 0 </objectid-counter>
+                    </execution-state>
+                  </various-states>
+                  <exit-code exit=""> 139 </exit-code>
+                </T>
+
+endmodule
+
 module CPP2
   imports DOMAINS
   imports ASTNODE
   imports CPP2-PHASE
+  imports CPP2-CONFIGURATION
   // Modules for verification
   imports MAP-SYMBOLIC
   imports INT-SYMBOLIC
   imports ML-SYNTAX
 
-  syntax Id ::= String2Idmacro (String) [macro,function, total, hook(STRING.string2token)]
+  //syntax Id ::= String2Idmacro (String) [macro,function, total, hook(STRING.string2token)]
 
   syntax TranslateResult
   syntax ExecResult ::= Int | String | Bool
@@ -128,44 +173,8 @@ module CPP2
   syntax Value ::= ValueC | ValueF
   syntax ExecResult ::= ValueC
 
-  configuration <T>
-                  <phase parser="PHASE, CPP2-PHASE"> $PHASE:Phase </phase>
-                  <k> initialize($PGM:KItem) </k>
-                  <translation-result>
-                    <global-function-declarations> .Map </global-function-declarations>
-                    <global-variable-declarations> .Map </global-variable-declarations>
-                  </translation-result>
-                  <various-states>
-                    <translation-state multiplicity="?">
-                      // We need these lists on order to perform deterministic traversal of the map,
-                      // in translation time. But we do not need these to perform execution.
-                      // Therefore, the whole cell <translation-state> will get stripped in execution.
-                      <global-function-declarations-list> .List </global-function-declarations-list>
-                      <global-variable-declarations-list> .List </global-variable-declarations-list>
-
-                      <local-variable-names> .Set </local-variable-names>
-                    </translation-state>
-                    <execution-state multiplicity="?">
-                      // This is probably the place to introduce <thread-local>.
-                      // But the K cell should stay outside <execution-state>,
-                      // because we want it also in translation.
-                      // Therefore, we will wrap it in <threads> (eventually).
-                      <stack> .List </stack>
-                      <local>
-                        <blocks> .List </blocks>
-                        <returnVariables> .Map </returnVariables> // Identifier |-> ObjectIDC
-                      </local>
-                      <global-variables> .Map </global-variables> // Identifier |-> ObjectIDC
-                      <memory> .Map </memory> // Int |-> Value (the key represents ObjectIDC)
-                      <objectid-counter> 0 </objectid-counter>
-                    </execution-state>
-                  </various-states>
-                  <exit-code exit=""> 139 </exit-code>
-                </T>
 
   //context alias [c]: <k> translate(HERE:K) ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
-
-  syntax KItem ::= initialize(KItem)
 
   // Start the translation phase
   rule <k> initialize(TU:TranslationUnit) => translate(TU) ...</k>
