@@ -241,6 +241,8 @@ module CPP2-ELABORATE-FUNCTION-BODY
   rule lookupVariableOccurrences0(((: node(T:IdExpression):IdExpression = node(E:Expression) ; ):UnnamedDeclaration) => node((: T:IdExpression = E:Expression ;):UnnamedDeclaration))
 
 
+  // An identifier is local if it is in the local-variable-names list, and global otherwise.
+  // TODO: we should also work with function parameters.
   rule <k> lookupVariableOccurrences0((X:Id) => (node(localIdentifier(X)):Identifier)) ...</k>
        <local-variable-names> LVNs:Set </local-variable-names>
        requires X in LVNs
@@ -248,7 +250,24 @@ module CPP2-ELABORATE-FUNCTION-BODY
   rule <k> lookupVariableOccurrences0((X:Id) => (node(globalIdentifier(X)):Identifier)) ...</k>
        <local-variable-names> LVNs:Set </local-variable-names>
        requires notBool (X in LVNs)
-  //
+  
+  // For an addition, we first process the arguments and then merge them into one node.
+  context lookupVariableOccurrences0((HOLE:AdditiveExpression => lookupVariableOccurrences0(HOLE)) + _E2:MultiplicativeExpression)
+    [result(NodeC)]
+
+  context lookupVariableOccurrences0(_E1:AdditiveExpression + (HOLE:MultiplicativeExpression => lookupVariableOccurrences0(HOLE)))
+    [result(NodeC)]
+  
+  rule lookupVariableOccurrences0((node(E1:AdditiveExpression):AdditiveExpression + node(E2:MultiplicativeExpression):MultiplicativeExpression) => node(E1 + E2))
+
+  // Similarly for subtraction
+  context lookupVariableOccurrences0((HOLE:AdditiveExpression => lookupVariableOccurrences0(HOLE)) - _E2:MultiplicativeExpression)
+    [result(NodeC)]
+
+  context lookupVariableOccurrences0(_E1:AdditiveExpression - (HOLE:MultiplicativeExpression => lookupVariableOccurrences0(HOLE)))
+    [result(NodeC)]
+  
+  rule lookupVariableOccurrences0((node(E1:AdditiveExpression):AdditiveExpression - node(E2:MultiplicativeExpression):MultiplicativeExpression) => node(E1 + E2))
 
 endmodule // CPP2-ELABORATE-FUNCTION-BODY
 
