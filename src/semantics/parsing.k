@@ -73,6 +73,8 @@ module PARSING
   rule isIllFormed(#SemicolonError(_):Expression) => true
   rule isIllFormed(#SemicolonError(_):UnnamedDeclaration) => true
   rule isIllFormed(#AmbiguityError(_, _)) => true
+  rule isIllFormed((X:Statement XS:Statements):Statements) => true
+    requires isIllFormed(X) orBool isIllFormed(XS)
 
   rule checkSemicolons(D:Declaration Ds:Declarations) => (checkSemicolons(D) checkSemicolons(Ds))
   rule checkSemicolons(.Declarations) => .Declarations
@@ -107,6 +109,7 @@ module PARSING
   rule checkSemicolons({ S:Statements }) => { checkSemicolons(S) }
   rule checkSemicolons(X:Id) => #SemicolonError(X)
   rule checkSemicolons(E:Expression ;) => E ;
+  rule checkSemicolons(E1 AO:AssignmentOperator E2) => #SemicolonError(E1 AO E2)
   rule checkSemicolons(S:ReturnStatement) => S
   rule checkSemicolons(return E:Expression ;) => return E ;
 
