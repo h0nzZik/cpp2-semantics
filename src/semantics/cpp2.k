@@ -115,25 +115,13 @@ module CPP2-CONFIGURATION
 
 endmodule
 
-module CPP2
+module CPP2-COMMON
   imports DOMAINS
   imports ASTNODE
-  imports CPP2-PHASE
-  imports CPP2-CONFIGURATION
-  // Modules for verification
-  imports MAP-SYMBOLIC
-  imports INT-SYMBOLIC
-  imports ML-SYNTAX
-
-  //syntax Id ::= String2Idmacro (String) [macro,function, total, hook(STRING.string2token)]
 
   syntax TranslateResult
   syntax ExecResult ::= Int | String | Bool
   syntax KResult ::= ExecResult
-
-
-  // TODO: create context for this production
-  // syntax Statements ::= NeList{Statement,""} [seqstrict(c)]
 
   // Convention: Separate sorts for operations and data
   // This sort represents various data, typically stored as values in maps and lists.
@@ -173,6 +161,79 @@ module CPP2
   syntax Value ::= ValueC | ValueF
   syntax ExecResult ::= ValueC
 
+endmodule
+
+module CPP2-ELABORATE-FUNCTION-BODY
+  imports CPP2-CONFIGURATION
+  imports CPP2-COMMON
+
+
+  // Represents function bodies
+  syntax FunctionBodyC ::= functionBody(Statement)
+  syntax FunctionBodyF ::= elaborateFunctionBody(KItem)
+  syntax FunctionBody ::= FunctionBodyC | FunctionBodyF
+  syntax TranslateResult ::= FunctionBodyC
+
+  syntax NodeF ::= lookupVariableOccurrences(KItem) 
+
+  context <k> elaborateFunctionBody(HOLE => lookupVariableOccurrences(HOLE)) ...</k> [result(NodeC)]
+  rule elaborateFunctionBody(node(X:Statement)) => functionBody(X)
+
+  rule <k> lookupVariableOccurrences(X)
+        => lookupVariableOccurrences0(X)
+        ~> restoreLocalVariableNames(Names)
+        ...</k>
+       <local-variable-names> Names => .Set </local-variable-names>
+       requires notBool isNodeC(X)
+
+  syntax KItem ::= restoreLocalVariableNames(Set) [private]
+
+  rule <k> (lookupVariableOccurrences0(X:NodeC) ~> restoreLocalVariableNames(Names)) => lookupVariableOccurrences(X) ...</k>
+       <local-variable-names> _ => Names </local-variable-names>
+
+
+  syntax NodeF ::= lookupVariableOccurrences0(KItem) [symbol,private]
+
+  rule lookupVariableOccurrences0(X:Int => node(X))
+  
+  context lookupVariableOccurrences0(return (HOLE:Expression) => (lookupVariableOccurrences0(HOLE)) ; )
+    [result(NodeC)]
+  
+  rule lookupVariableOccurrences0(return node(X) ; => node (return X ;))
+  
+  context lookupVariableOccurrences0((((HOLE:Statement) => (lookupVariableOccurrences0(HOLE))):Statement _:Statements):Statements)
+    [result(NodeC)]
+  
+  context lookupVariableOccurrences0((_:NodeC ((HOLE:Statements) => (lookupVariableOccurrences0( HOLE )))):Statements)
+    [result(NodeC)]
+
+  rule lookupVariableOccurrences0((.Statements):Statements => (node(.Statements):Statements))
+  
+  rule lookupVariableOccurrences0((((node(X:Statement):Statement) (node(XS:Statements):Statements)):Statements) => (node((X XS):Statements):Statements))
+
+  context <k> lookupVariableOccurrences0(({ (HOLE:Statements) => (lookupVariableOccurrences0(HOLE)) }):CompoundStatement) ...</k>
+    [result(NodeC)]
+  
+  rule lookupVariableOccurrences0(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
+
+endmodule // CPP2-ELABORATE-FUNCTION-BODY
+
+module CPP2
+  imports DOMAINS
+  imports ASTNODE
+  imports CPP2-PHASE
+  imports CPP2-CONFIGURATION
+  imports CPP2-COMMON
+  imports CPP2-ELABORATE-FUNCTION-BODY
+  // Modules for verification
+  imports MAP-SYMBOLIC
+  imports INT-SYMBOLIC
+  imports ML-SYNTAX
+
+  // TODO: create context for this production
+  // syntax Statements ::= NeList{Statement,""} [seqstrict(c)]
+
+
 
   //context alias [c]: <k> translate(HERE:K) ... </k> <phase> TranslationPhase() </phase> [result(TranslateResult)]
 
@@ -206,13 +267,6 @@ module CPP2
   rule declareGlobal(X:Identifier : FT:FunctionType = Stmt:Statement)
     => declareGlobalFunction(X, FT, elaborateFunctionBody(Stmt))
 
-  // Represents function bodies
-  syntax FunctionBodyC ::= functionBody(Statement)
-  syntax FunctionBodyF ::= elaborateFunctionBody(KItem)
-  syntax FunctionBody ::= FunctionBodyC | FunctionBodyF
-  syntax TranslateResult ::= FunctionBodyC
-
-
   syntax Operation ::= declareGlobalFunction(Identifier, FunctionType, FunctionBody) // [seqstrict(c;3)]
 
   context declareGlobalFunction(_,_,HOLE:FunctionBody) [result(FunctionBodyC)]
@@ -224,51 +278,6 @@ module CPP2
   // Represent a declared function, where the body has been already elaborated.
   syntax Record ::= globalFunction(id: Identifier, type: FunctionType, body: FunctionBody)
 
-  // TODO implement various passes through the statement
-  //rule elaborateFunctionBody(S) => functionBody(S)
-
-  // without the [symbol] annotation, `kompile` crashes when processing the context alias.
-  syntax NodeF ::= lookupVariableOccurrences(KItem) 
-
-  context <k> elaborateFunctionBody(HOLE => lookupVariableOccurrences(HOLE)) ...</k> [result(NodeC)]
-  rule elaborateFunctionBody(node(X:Statement)) => functionBody(X)
-
-  rule <k> lookupVariableOccurrences(X)
-        => lookupVariableOccurrences0(X)
-        ~> restoreLocalVariableNames(Names)
-        ...</k>
-       <local-variable-names> Names => .Set </local-variable-names>
-       requires notBool isNodeC(X)
-
-  syntax KItem ::= restoreLocalVariableNames(Set) [private]
-
-  rule <k> (lookupVariableOccurrences0(X:NodeC) ~> restoreLocalVariableNames(Names)) => lookupVariableOccurrences(X) ...</k>
-       <local-variable-names> _ => Names </local-variable-names>
-
-
-  syntax NodeF ::= lookupVariableOccurrences0(KItem) [symbol]
-
-  rule lookupVariableOccurrences0(X:Int => node(X))
-  
-  context lookupVariableOccurrences0(return (HOLE:Expression) => (lookupVariableOccurrences0(HOLE)) ; )
-    [result(NodeC)]
-  
-  rule lookupVariableOccurrences0(return node(X) ; => node (return X ;))
-  
-  context lookupVariableOccurrences0((((HOLE:Statement) => (lookupVariableOccurrences0(HOLE))):Statement _:Statements):Statements)
-    [result(NodeC)]
-  
-  context lookupVariableOccurrences0((_:NodeC ((HOLE:Statements) => (lookupVariableOccurrences0( HOLE )))):Statements)
-    [result(NodeC)]
-
-  rule lookupVariableOccurrences0((.Statements):Statements => (node(.Statements):Statements))
-  
-  rule lookupVariableOccurrences0((((node(X:Statement):Statement) (node(XS:Statements):Statements)):Statements) => (node((X XS):Statements):Statements))
-
-  context <k> lookupVariableOccurrences0(({ (HOLE:Statements) => (lookupVariableOccurrences0(HOLE)) }):CompoundStatement) ...</k>
-    [result(NodeC)]
-  
-  rule lookupVariableOccurrences0(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
 
   //context elaborateFunctionBody()
 
