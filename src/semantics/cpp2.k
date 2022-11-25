@@ -8,6 +8,7 @@ module ASTNODE
   imports CPP2-SYNTAX 
 
   syntax PrimaryExpression ::= parentheses(Expressions) [seqstrict(c), symbol, klabel(parentheses)]
+  syntax ParameterDeclarationList ::= pdlist(ParameterDeclarations) [seqstrict(c), hybrid(IllFormed, WellFormed), symbol, klabel(pdlist)]
 
   syntax KItem
   // Represents an AST node
@@ -18,6 +19,8 @@ module ASTNODE
   syntax NodeC
 
   // Generalize the AST so that NodeC can be plugged anywhere in it
+  syntax Identifier ::= Node
+  syntax Literal ::= Node
   syntax PrimaryExpression ::= Node
   syntax PostfixExpression ::= Node
   syntax PrefixExpression ::= Node
@@ -69,6 +72,11 @@ module ASTNODE
   syntax Declaration ::= Node
   syntax Declarations ::= Node
   syntax TranslationUnit ::= Node
+
+  syntax ElaboratedIdentifier ::= globalIdentifier(Id)
+                                | localIdentifier(Id)
+
+  syntax Identifier ::= ElaboratedIdentifier
 endmodule
 
 module CPP2-CONFIGURATION
@@ -215,6 +223,32 @@ module CPP2-ELABORATE-FUNCTION-BODY
     [result(NodeC)]
   
   rule lookupVariableOccurrences0(({ node(X:Statements):Statements }) => (node({ X }):CompoundStatement))
+
+  // When we see a declaration, we first process the UnnamedDeclaration part of it and then record the local variable name
+  context lookupVariableOccurrences0((_X:Identifier ((HOLE:UnnamedDeclaration) => (lookupVariableOccurrences0(HOLE)))):Declaration)
+    [result(NodeC)]
+  
+  rule <k> lookupVariableOccurrences0(((X:Identifier node(UD:UnnamedDeclaration):UnnamedDeclaration):Declaration) => (node((X UD):Declaration)):Declaration) ...</k>
+       <local-variable-names>... (.Set => SetItem(X)) ...</local-variable-names>
+  
+  // When we see an unnamed declaration, we first process the type and then the initializer
+  context lookupVariableOccurrences0((: HOLE:IdExpression => lookupVariableOccurrences0(HOLE) = _:Expression ; ):UnnamedDeclaration)
+    [result(NodeC)]
+
+  context lookupVariableOccurrences0((: node(_:IdExpression):IdExpression = HOLE:Expression => lookupVariableOccurrences0(HOLE) ; ):UnnamedDeclaration)
+    [result(NodeC)]
+
+  rule lookupVariableOccurrences0(((: node(T:IdExpression):IdExpression = node(E:Expression) ; ):UnnamedDeclaration) => node((: T:IdExpression = E:Expression ;):UnnamedDeclaration))
+
+
+  rule <k> lookupVariableOccurrences0((X:Id) => (node(localIdentifier(X)):Identifier)) ...</k>
+       <local-variable-names> LVNs:Set </local-variable-names>
+       requires X in LVNs
+
+  rule <k> lookupVariableOccurrences0((X:Id) => (node(globalIdentifier(X)):Identifier)) ...</k>
+       <local-variable-names> LVNs:Set </local-variable-names>
+       requires notBool (X in LVNs)
+  //
 
 endmodule // CPP2-ELABORATE-FUNCTION-BODY
 

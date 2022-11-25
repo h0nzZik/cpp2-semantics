@@ -9,7 +9,10 @@ module PARSING-SYNTAX
 
 
 
+  // We have all parenthesized things in the parsing module as opposed to the regular cpp2 syntax,
+  // because if they are in the syntax, K rules can get accidentally parsed using these productions.
   syntax PrimaryExpression ::= "(" Expressions ")" [seqstrict(c), hybrid(IllFormed, WellFormed), symbol, klabel(parentheses)]
+  syntax ParameterDeclarationList ::= "(" ParameterDeclarations ")" [seqstrict(c), hybrid(IllFormed, WellFormed), symbol, klabel(pdlist)]
   
   // This means that set variables cannot occur in the claim inside the comment
   syntax QuotedString ::= r"(```k[^`]*```)" [token]

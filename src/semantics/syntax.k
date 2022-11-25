@@ -194,7 +194,7 @@ module CPP2-SYNTAX
                                 | Declaration
 
   syntax ParameterDeclarations ::= List{ParameterDeclaration,","}                              [seqstrict(c), hybrid(IllFormed, WellFormed)]
-  syntax ParameterDeclarationList ::= "(" ParameterDeclarations ")"                            [seqstrict(c), hybrid(IllFormed, WellFormed)]
+  syntax ParameterDeclarationList // see parsing.k
 
   syntax ContractKind ::= "pre" | "post" | "assert"
 

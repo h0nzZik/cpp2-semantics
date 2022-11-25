@@ -25,11 +25,11 @@ clean:
 
 ${PARSER_TIMESTAMP}: semantics/parsing.k semantics/syntax.k
 	mkdir -p ${PARSER_KOMPILED_DIR}
-	kompile --backend llvm --gen-glr-bison-parser --syntax-module PARSING-SYNTAX --directory ${PARSER_KOMPILED_DIR} $<
+	kompile --no-exc-wrap --backend llvm --gen-glr-bison-parser --syntax-module PARSING-SYNTAX --directory ${PARSER_KOMPILED_DIR} $<
 
 ${TIMESTAMP}: semantics/cpp2.k semantics/syntax.k
 	mkdir -p ${KOMPILED_DIR}
-	kompile --backend haskell --emit-json --directory ${KOMPILED_DIR} $<
+	kompile --no-exc-wrap --backend haskell --emit-json --directory ${KOMPILED_DIR} $<
 
 PREFIX ?= /usr
 

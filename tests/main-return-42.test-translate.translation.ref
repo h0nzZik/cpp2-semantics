@@ -29,7 +29,7 @@ Lbl'-LT-'generatedTop'-GT-'{}(
                             /* Fl Fn D Sfa Cl */
                             Lbl'UndsUndsUndsUnds'CPP2-SYNTAX'Unds'FunctionType'Unds'ParameterDeclarationList'Unds'ReturnList'Unds'Contracts{}(
                                 /* Fl Fn D Sfa Cl */
-                                Lbl'LParUndsRParUnds'CPP2-SYNTAX'Unds'ParameterDeclarationList'Unds'ParameterDeclarations{}(
+                                Lblpdlist{}(
                                     /* Fl Fn D Sfa Cl */
                                     Lbl'Stop'List'LBraQuotUndsCommUndsUnds'CPP2-SYNTAX'Unds'ParameterDeclarations'Unds'ParameterDeclaration'Unds'ParameterDeclarations'QuotRBraUnds'ParameterDeclarations{}()
                                 ),
@@ -48,7 +48,7 @@ Lbl'-LT-'generatedTop'-GT-'{}(
                             /* Fl Fn D Sfa Cli */
                             /* Inj: */ inj{SortFunctionBodyC{}, SortFunctionBody{}}(
                                 /* Fl Fn D Sfa Cl */
-                                LblfunctionBody'LParUndsRParUnds'CPP2'Unds'FunctionBodyC'Unds'Statement{}(
+                                LblfunctionBody'LParUndsRParUnds'CPP2-ELABORATE-FUNCTION-BODY'Unds'FunctionBodyC'Unds'Statement{}(
                                     /* Fl Fn D Sfa Cli */
                                     /* Inj: */ inj{SortCompoundStatement{}, SortStatement{}}(
                                         /* Fl Fn D Sfa Cl */
